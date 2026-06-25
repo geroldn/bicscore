@@ -39,15 +39,10 @@ model User {
   password      String?
   username      String?   @unique
   role          UserRole  @default(USER)
-  moyenne       Float?
-  tmc           Int?
 
-  accounts           Account[]
-  sessions           Session[]
-  clubMemberships    ClubMembership[]
-  competitionEntries CompetitionEntry[]
-  matchesAsPlayerA   Match[]            @relation("PlayerA")
-  matchesAsPlayerB   Match[]            @relation("PlayerB")
+  accounts Account[]
+  sessions Session[]
+  player   Player?
 }
 
 model Account {
@@ -85,6 +80,22 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  moyenne   Float?
+  tmc       Int?
+  userId    String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user               User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clubMemberships    ClubMembership[]
+  competitionEntries CompetitionEntry[]
+  matchesAsPlayerA   Match[]            @relation("PlayerA")
+  matchesAsPlayerB   Match[]            @relation("PlayerB")
+}
+
 model Club {
   id          String   @id @default(cuid())
   name        String
@@ -92,20 +103,21 @@ model Club {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  memberships ClubMembership[]
+  memberships   ClubMembership[]
+  competitions  Competition[]
 }
 
 model ClubMembership {
   id        String         @id @default(cuid())
-  userId    String
+  playerId  String
   clubId    String
   role      ClubMemberRole @default(MEMBER)
   joinedAt  DateTime       @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  club Club @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, clubId])
+  @@unique([playerId, clubId])
 }
 
 model Competition {
@@ -116,9 +128,11 @@ model Competition {
   status      CompetitionStatus @default(DRAFT)
   startDate   DateTime?
   endDate     DateTime?
+  clubId      String
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  club    Club               @relation(fields: [clubId], references: [id])
   entries CompetitionEntry[]
   matches Match[]
 }
@@ -126,15 +140,14 @@ model Competition {
 model CompetitionEntry {
   id            String   @id @default(cuid())
   competitionId String
-  userId        String
+  playerId      String
+  tmc           Int?
   registeredAt  DateTime @default(now())
 
-  tmc           Int?
-
   competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  player      Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
 
-  @@unique([competitionId, userId])
+  @@unique([competitionId, playerId])
 }
 
 model Match {
@@ -149,6 +162,6 @@ model Match {
   updatedAt     DateTime  @updatedAt
 
   competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
-  playerA     User        @relation("PlayerA", fields: [playerAId], references: [id])
-  playerB     User        @relation("PlayerB", fields: [playerBId], references: [id])
+  playerA     Player      @relation("PlayerA", fields: [playerAId], references: [id])
+  playerB     Player      @relation("PlayerB", fields: [playerBId], references: [id])
 }
