@@ -1,12 +1,14 @@
 "use client"
 
-import { createClub, updateClub } from "@/app/actions/clubs"
+import { addClubAdmin, createClub, getClubAdmins, removeClubAdmin, updateClub } from "@/app/actions/clubs"
 import Breadcrumb from "@/components/breadcrumb"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 
 type Club = { id: string; name: string; description: string | null }
+type AdminUser = { id: string; name: string | null; email: string | null; username: string | null }
+type Admin = { id: string; user: AdminUser }
 
 export default function ClubsView({ clubs }: { clubs: Club[] }) {
   const [editing, setEditing] = useState<Club | null>(null)
@@ -81,10 +83,7 @@ export default function ClubsView({ clubs }: { clubs: Club[] }) {
       )}
 
       {open && (
-        <ClubModal
-          club={editing}
-          onClose={close}
-        />
+        <ClubModal club={editing} onClose={close} />
       )}
     </>
   )
@@ -93,12 +92,22 @@ export default function ClubsView({ clubs }: { clubs: Club[] }) {
 function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const [admins, setAdmins] = useState<Admin[]>([])
+  const [available, setAvailable] = useState<AdminUser[]>([])
+  const [addingAdmin, setAddingAdmin] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState("")
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
+    if (club) {
+      getClubAdmins(club.id).then(({ admins, available }) => {
+        setAdmins(admins)
+        setAvailable(available)
+      })
     }
+  }, [club?.id])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [onClose])
@@ -117,15 +126,32 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
     onClose()
   }
 
+  async function handleAddAdmin() {
+    if (!club || !selectedUserId) return
+    const created = await addClubAdmin(club.id, selectedUserId)
+    setAdmins((prev) => [...prev, created])
+    setAvailable((prev) => prev.filter((u) => u.id !== selectedUserId))
+    setSelectedUserId("")
+    setAddingAdmin(false)
+  }
+
+  async function handleRemoveAdmin(adminId: string, userId: string) {
+    await removeClubAdmin(adminId)
+    const removed = admins.find((a) => a.id === adminId)
+    if (removed) setAvailable((prev) => [...prev, removed.user].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")))
+    setAdmins((prev) => prev.filter((a) => a.id !== adminId))
+  }
+
+  function userLabel(u: AdminUser) {
+    return u.name ?? u.email ?? u.username ?? "—"
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div
-        ref={dialogRef}
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900"
-      >
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
         <h2 className="mb-4 text-lg font-semibold">
           {club ? "Edit Club" : "Add Club"}
         </h2>
@@ -140,6 +166,7 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
               name="name"
               type="text"
               required
+              autoFocus
               defaultValue={club?.name ?? ""}
               className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
             />
@@ -157,6 +184,64 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
               className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
             />
           </div>
+
+          {club && (
+            <>
+              <hr className="border-black/10 dark:border-white/10" />
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Admins</span>
+                  <button
+                    type="button"
+                    onClick={() => { setAddingAdmin(true); setSelectedUserId(available[0]?.id ?? "") }}
+                    disabled={available.length === 0}
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                  >
+                    <PlusIcon size={12} />
+                  </button>
+                </div>
+
+                {addingAdmin && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedUserId}
+                      onChange={(e) => setSelectedUserId(e.target.value)}
+                      className="flex-1 rounded-md border border-black/20 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                    >
+                      {available.map((u) => (
+                        <option key={u.id} value={u.id}>{userLabel(u)}</option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={handleAddAdmin} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+                      <CheckIcon />
+                    </button>
+                    <button type="button" onClick={() => setAddingAdmin(false)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+                      <XIcon />
+                    </button>
+                  </div>
+                )}
+
+                <div className="max-h-36 overflow-y-auto">
+                  {admins.length === 0 && !addingAdmin ? (
+                    <p className="text-xs text-zinc-400">No admins yet.</p>
+                  ) : (
+                    admins.map((a) => (
+                      <div key={a.id} className="flex items-center justify-between py-1">
+                        <span className="text-sm">{userLabel(a.user)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdmin(a.id, a.user.id)}
+                          className="text-zinc-400 hover:text-red-500"
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end gap-2">
             <button
@@ -180,9 +265,9 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
   )
 }
 
-function PlusIcon() {
+function PlusIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -194,6 +279,34 @@ function EditIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     </svg>
   )
 }

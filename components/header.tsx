@@ -29,7 +29,7 @@ export default function Header({ userName, userEmail, userRole }: HeaderProps) {
 
   return (
     <header className="flex h-14 items-center justify-between bg-zinc-900 px-6 shadow-md">
-      <span className="text-base font-bold tracking-widest text-white uppercase">Bicscore</span>
+      <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicscore</a>
 
       <div ref={ref} className="relative">
         <button
@@ -47,7 +47,7 @@ export default function Header({ userName, userEmail, userRole }: HeaderProps) {
               <p className="truncate text-xs text-zinc-400">{userEmail ?? userRole}</p>
             </div>
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => signOut({ callbackUrl: "/" })}
               className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
             >
               Sign out

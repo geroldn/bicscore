@@ -34,3 +34,38 @@ export async function updateClub(id: string, formData: FormData) {
   await prisma.club.update({ where: { id }, data: { name, description } })
   revalidatePath("/dashboard/clubs")
 }
+
+const adminUserSelect = { id: true, name: true, email: true, username: true } as const
+
+export async function getClubAdmins(clubId: string) {
+  await assertStaff()
+
+  const [admins, allUsers] = await Promise.all([
+    prisma.clubAdmin.findMany({
+      where: { clubId },
+      select: { id: true, user: { select: adminUserSelect } },
+      orderBy: { user: { name: "asc" } },
+    }),
+    prisma.user.findMany({
+      select: adminUserSelect,
+      orderBy: { name: "asc" },
+    }),
+  ])
+
+  const adminUserIds = new Set(admins.map((a) => a.user.id))
+  const available = allUsers.filter((u) => !adminUserIds.has(u.id))
+  return { admins, available }
+}
+
+export async function addClubAdmin(clubId: string, userId: string) {
+  await assertStaff()
+  return prisma.clubAdmin.create({
+    data: { clubId, userId },
+    select: { id: true, user: { select: adminUserSelect } },
+  })
+}
+
+export async function removeClubAdmin(adminId: string) {
+  await assertStaff()
+  await prisma.clubAdmin.delete({ where: { id: adminId } })
+}

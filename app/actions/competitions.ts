@@ -2,6 +2,7 @@
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import type { CompetitionStatus } from "@/app/generated/prisma/client"
 import { getServerSession } from "next-auth/next"
 import { revalidatePath } from "next/cache"
 
@@ -28,12 +29,169 @@ export async function updateCompetition(competitionId: string, clubId: string, f
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
+  const status = formData.get("status") as CompetitionStatus
 
   if (!name) return
 
   await prisma.competition.update({
     where: { id: competitionId },
-    data: { name, description },
+    data: { name, description, status },
   })
   revalidatePath(`/dashboard/clubs/${clubId}/competitions`)
+}
+
+export async function getCompetitionPlayers(competitionId: string, clubId: string) {
+  await assertStaff()
+
+  const [entries, memberships] = await Promise.all([
+    prisma.competitionEntry.findMany({
+      where: { competitionId },
+      select: {
+        id: true,
+        tmc: true,
+        player: { select: { id: true, name: true, tmc: true } },
+      },
+      orderBy: { player: { name: "asc" } },
+    }),
+    prisma.clubMembership.findMany({
+      where: { clubId },
+      select: {
+        player: { select: { id: true, name: true, tmc: true } },
+      },
+      orderBy: { player: { name: "asc" } },
+    }),
+  ])
+
+  const inCompetition = new Set(entries.map((e) => e.player.id))
+  const available = memberships
+    .map((m) => m.player)
+    .filter((p) => !inCompetition.has(p.id))
+
+  return { entries, available }
+}
+
+export async function addPlayerToCompetition(
+  competitionId: string,
+  playerId: string,
+  tmc: number | null,
+) {
+  await assertStaff()
+
+  return prisma.competitionEntry.create({
+    data: { competitionId, playerId, tmc },
+    select: {
+      id: true,
+      tmc: true,
+      player: { select: { id: true, name: true, tmc: true } },
+    },
+  })
+}
+
+export async function updateEntryTmc(entryId: string, tmc: number | null) {
+  await assertStaff()
+
+  await prisma.competitionEntry.update({
+    where: { id: entryId },
+    data: { tmc },
+  })
+}
+
+export async function removePlayerFromCompetition(entryId: string) {
+  await assertStaff()
+
+  await prisma.competitionEntry.delete({ where: { id: entryId } })
+}
+
+function calcScores(
+  carambolesA: number | null,
+  carambolesB: number | null,
+  tmcA: number | null,
+  tmcB: number | null,
+): { scoreA: number | null; scoreB: number | null } {
+  if (carambolesA === null || carambolesB === null || tmcA === null || tmcB === null) {
+    return { scoreA: null, scoreB: null }
+  }
+  const aFinished = carambolesA >= tmcA
+  const bFinished = carambolesB >= tmcB
+  const ratioA = Math.floor((10 * carambolesA) / tmcA)
+  const ratioB = Math.floor((10 * carambolesB) / tmcB)
+  if (aFinished && bFinished) return { scoreA: 11, scoreB: 11 }
+  if (aFinished) return { scoreA: 12, scoreB: ratioB }
+  if (bFinished) return { scoreA: ratioA, scoreB: 12 }
+  return { scoreA: ratioA, scoreB: ratioB }
+}
+
+export async function upsertMatchResult(
+  competitionId: string,
+  clubId: string,
+  rowPlayerId: string,
+  colPlayerId: string,
+  carambolesRow: number | null,
+  carambolesCol: number | null,
+  innings: number | null,
+) {
+  await assertStaff()
+
+  const sel = {
+    id: true,
+    playerAId: true,
+    playerBId: true,
+    scoreA: true,
+    scoreB: true,
+    carambolesA: true,
+    carambolesB: true,
+    innings: true,
+  } as const
+
+  const [existing, tmcEntries] = await Promise.all([
+    prisma.match.findFirst({
+      where: {
+        competitionId,
+        OR: [
+          { playerAId: rowPlayerId, playerBId: colPlayerId },
+          { playerAId: colPlayerId, playerBId: rowPlayerId },
+        ],
+      },
+      select: { id: true, playerAId: true },
+    }),
+    prisma.competitionEntry.findMany({
+      where: { competitionId, playerId: { in: [rowPlayerId, colPlayerId] } },
+      select: { playerId: true, tmc: true },
+    }),
+  ])
+
+  const tmcRow = tmcEntries.find((e) => e.playerId === rowPlayerId)?.tmc ?? null
+  const tmcCol = tmcEntries.find((e) => e.playerId === colPlayerId)?.tmc ?? null
+
+  let result
+  if (existing) {
+    const isRowA = existing.playerAId === rowPlayerId
+    const storedA = isRowA ? carambolesRow : carambolesCol
+    const storedB = isRowA ? carambolesCol : carambolesRow
+    const tmcA = isRowA ? tmcRow : tmcCol
+    const tmcB = isRowA ? tmcCol : tmcRow
+    const scores = calcScores(storedA, storedB, tmcA, tmcB)
+    result = await prisma.match.update({
+      where: { id: existing.id },
+      data: { carambolesA: storedA, carambolesB: storedB, innings, ...scores },
+      select: sel,
+    })
+  } else {
+    const scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
+    result = await prisma.match.create({
+      data: {
+        competitionId,
+        playerAId: rowPlayerId,
+        playerBId: colPlayerId,
+        carambolesA: carambolesRow,
+        carambolesB: carambolesCol,
+        innings,
+        ...scores,
+      },
+      select: sel,
+    })
+  }
+
+  revalidatePath(`/dashboard/clubs/${clubId}/competitions/${competitionId}`)
+  return result
 }

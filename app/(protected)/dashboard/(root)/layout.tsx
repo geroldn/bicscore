@@ -9,7 +9,7 @@ export default async function RootLayout({
 }) {
   const session = await getServerSession(authOptions)
 
-  if (session?.user.role !== "ROOT") {
+  if (session?.user.role !== "ROOT" && session?.user.role !== "STAFF") {
     redirect("/dashboard")
   }
 
