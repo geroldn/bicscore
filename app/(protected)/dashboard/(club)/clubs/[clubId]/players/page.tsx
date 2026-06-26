@@ -18,7 +18,7 @@ export default async function PlayersPage({
 
   const players = await prisma.player.findMany({
     where: { clubMemberships: { some: { clubId } } },
-    orderBy: { name: "asc" },
+    orderBy: [{ tmc: { sort: "desc", nulls: "last" } }, { name: "asc" }],
     select: { id: true, name: true, moyenne: true, tmc: true },
   })
 

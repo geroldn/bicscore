@@ -32,7 +32,8 @@ export default function UsersView({ users, sessionUserId }: { users: User[]; ses
           <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
             <tr>
               <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email / Username</th>
+              <th className="px-4 py-3">Username</th>
+              <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -41,9 +42,8 @@ export default function UsersView({ users, sessionUserId }: { users: User[]; ses
             {users.map((user) => (
               <tr key={user.id} className="bg-white dark:bg-zinc-900">
                 <td className="px-4 py-3 font-medium">{user.name ?? "—"}</td>
-                <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">
-                  {user.email ?? user.username ?? "—"}
-                </td>
+                <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{user.username ?? "—"}</td>
+                <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{user.email ?? "—"}</td>
                 <td className="px-4 py-3">
                   <RoleBadge role={user.role} />
                 </td>
