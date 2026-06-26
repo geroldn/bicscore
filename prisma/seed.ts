@@ -9,7 +9,10 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  const password = await hash("mamalou", 12)
+  const rawPassword = process.env.SEED_ROOT_PASSWORD
+  if (!rawPassword) throw new Error("SEED_ROOT_PASSWORD env var is required")
+
+  const password = await hash(rawPassword, 12)
 
   await prisma.user.upsert({
     where: { username: "root" },
@@ -22,7 +25,7 @@ async function main() {
     },
   })
 
-  console.log("Seeded root user (username: root, password: )")
+  console.log("Seeded root user (username: root)")
 }
 
 main()
