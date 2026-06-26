@@ -35,17 +35,17 @@ export default function CompetitionsView({
   return (
     <>
       <Breadcrumb crumbs={[
-        { label: "Dashboard", href: "/dashboard" },
+        { label: "Overzicht", href: "/dashboard" },
         { label: "Clubs", href: "/dashboard/clubs" },
         { label: club.name, href: `/dashboard/clubs/${club.id}` },
-        { label: "Competitions" },
+        { label: "Competities" },
       ]} />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{club.name} — Competitions</h1>
+        <h1 className="text-2xl font-semibold">{club.name} — Competities</h1>
         <button
           onClick={openAdd}
-          title="Add competition"
+          title="Competitie toevoegen"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           <PlusIcon />
@@ -53,14 +53,14 @@ export default function CompetitionsView({
       </div>
 
       {competitions.length === 0 ? (
-        <p className="text-sm text-zinc-500">No competitions yet. Click + to add one.</p>
+        <p className="text-sm text-zinc-500">Nog geen competities. Klik op + om er een toe te voegen.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Naam</th>
+                <th className="px-4 py-3">Omschrijving</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -109,9 +109,16 @@ function StatusBadge({ status }: { status: string }) {
     COMPLETED:   "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
     CANCELLED:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
   }
+  const labels: Record<string, string> = {
+    DRAFT: "Concept",
+    OPEN: "Open",
+    IN_PROGRESS: "Bezig",
+    COMPLETED: "Afgerond",
+    CANCELLED: "Geannuleerd",
+  }
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] ?? ""}`}>
-      {status.replace("_", " ")}
+      {labels[status] ?? status}
     </span>
   )
 }
@@ -219,14 +226,14 @@ function CompetitionModal({
       <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-zinc-900">
         <div className="p-6 pb-0">
           <h2 className="mb-4 text-lg font-semibold">
-            {competition ? "Edit Competition" : `Add Competition — ${club.name}`}
+            {competition ? "Competitie bewerken" : `Competitie toevoegen — ${club.name}`}
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 pt-0">
           <div className="flex flex-col gap-1">
             <label htmlFor="name" className="text-sm font-medium">
-              Name <span className="text-red-500">*</span>
+              Naam <span className="text-red-500">*</span>
             </label>
             <input
               id="name"
@@ -239,7 +246,7 @@ function CompetitionModal({
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="description" className="text-sm font-medium">Description</label>
+            <label htmlFor="description" className="text-sm font-medium">Omschrijving</label>
             <textarea
               id="description"
               name="description"
@@ -258,11 +265,11 @@ function CompetitionModal({
                 defaultValue={competition.status}
                 className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
               >
-                <option value="DRAFT">Draft</option>
+                <option value="DRAFT">Concept</option>
                 <option value="OPEN">Open</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
+                <option value="IN_PROGRESS">Bezig</option>
+                <option value="COMPLETED">Afgerond</option>
+                <option value="CANCELLED">Geannuleerd</option>
               </select>
             </div>
           )}
@@ -271,12 +278,12 @@ function CompetitionModal({
           {competition && (
             <div className="flex flex-col gap-2 border-t border-black/10 pt-4 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Players</span>
+                <span className="text-sm font-medium">Spelers</span>
                 <button
                   type="button"
                   onClick={() => { setAddingPlayer(true); setAddPlayerId(""); setAddTmc("") }}
                   disabled={available.length === 0 || addingPlayer || actionPending}
-                  title="Add player"
+                  title="Speler toevoegen"
                   className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
                 >
                   <PlusIcon size={12} />
@@ -298,7 +305,7 @@ function CompetitionModal({
                         }}
                         className="min-w-0 flex-1 rounded border border-black/20 px-2 py-1 text-sm dark:border-white/20 dark:bg-zinc-800"
                       >
-                        <option value="">Select player…</option>
+                        <option value="">Kies speler…</option>
                         {available.map((p) => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
@@ -316,7 +323,7 @@ function CompetitionModal({
                         onClick={handleAddPlayer}
                         disabled={!addPlayerId || actionPending}
                         className="text-green-600 hover:text-green-700 disabled:opacity-40"
-                        title="Confirm"
+                        title="Bevestigen"
                       >
                         <CheckIcon />
                       </button>
@@ -324,7 +331,7 @@ function CompetitionModal({
                         type="button"
                         onClick={() => setAddingPlayer(false)}
                         className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                        title="Cancel"
+                        title="Annuleren"
                       >
                         <XIcon />
                       </button>
@@ -332,7 +339,7 @@ function CompetitionModal({
                   )}
 
                   {entries.length === 0 && !addingPlayer ? (
-                    <p className="px-3 py-4 text-center text-xs text-zinc-400">No players added yet.</p>
+                    <p className="px-3 py-4 text-center text-xs text-zinc-400">Nog geen spelers toegevoegd.</p>
                   ) : (
                     entries.map((entry) => (
                       <div
@@ -359,7 +366,7 @@ function CompetitionModal({
                               onClick={() => handleSaveTmc(entry.id)}
                               disabled={actionPending}
                               className="text-green-600 hover:text-green-700 disabled:opacity-40"
-                              title="Save"
+                              title="Opslaan"
                             >
                               <CheckIcon />
                             </button>
@@ -367,7 +374,7 @@ function CompetitionModal({
                               type="button"
                               onClick={() => setEditingEntryId(null)}
                               className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                              title="Cancel"
+                              title="Annuleren"
                             >
                               <XIcon />
                             </button>
@@ -384,7 +391,7 @@ function CompetitionModal({
                                 setEditingTmc(entry.tmc?.toString() ?? "")
                               }}
                               className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
-                              title="Edit TMC"
+                              title="TMC bewerken"
                             >
                               <EditIcon />
                             </button>
@@ -393,7 +400,7 @@ function CompetitionModal({
                               onClick={() => handleRemovePlayer(entry.id)}
                               disabled={actionPending}
                               className="text-zinc-400 hover:text-red-500 disabled:opacity-40"
-                              title="Remove"
+                              title="Verwijderen"
                             >
                               <TrashIcon />
                             </button>
@@ -413,14 +420,14 @@ function CompetitionModal({
               onClick={onClose}
               className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
             >
-              Close
+              Sluiten
             </button>
             <button
               type="submit"
               disabled={pending}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {pending ? "Saving…" : "Save"}
+              {pending ? "Opslaan…" : "Opslaan"}
             </button>
           </div>
         </form>

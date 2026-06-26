@@ -31,12 +31,12 @@ export default function ClubsView({ clubs }: { clubs: Club[] }) {
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Clubs" }]} />
+      <Breadcrumb crumbs={[{ label: "Overzicht", href: "/dashboard" }, { label: "Clubs" }]} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Clubs</h1>
         <button
           onClick={openAdd}
-          title="Add club"
+          title="Club toevoegen"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           <PlusIcon />
@@ -44,14 +44,14 @@ export default function ClubsView({ clubs }: { clubs: Club[] }) {
       </div>
 
       {clubs.length === 0 ? (
-        <p className="text-sm text-zinc-500">No clubs yet. Click + to add one.</p>
+        <p className="text-sm text-zinc-500">Nog geen clubs. Klik op + om er een toe te voegen.</p>
       ) : (
         <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Naam</th>
+                <th className="px-4 py-3">Omschrijving</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -69,7 +69,7 @@ export default function ClubsView({ clubs }: { clubs: Club[] }) {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => openEdit(club)}
-                      title="Edit"
+                      title="Bewerken"
                       className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                     >
                       <EditIcon />
@@ -153,13 +153,13 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
     >
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
         <h2 className="mb-4 text-lg font-semibold">
-          {club ? "Edit Club" : "Add Club"}
+          {club ? "Club bewerken" : "Club toevoegen"}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label htmlFor="name" className="text-sm font-medium">
-              Name <span className="text-red-500">*</span>
+              Naam <span className="text-red-500">*</span>
             </label>
             <input
               id="name"
@@ -174,7 +174,7 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
 
           <div className="flex flex-col gap-1">
             <label htmlFor="description" className="text-sm font-medium">
-              Description
+              Omschrijving
             </label>
             <textarea
               id="description"
@@ -190,7 +190,7 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
               <hr className="border-black/10 dark:border-white/10" />
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Admins</span>
+                  <span className="text-sm font-medium">Beheerders</span>
                   <button
                     type="button"
                     onClick={() => { setAddingAdmin(true); setSelectedUserId(available[0]?.id ?? "") }}
@@ -223,7 +223,7 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
 
                 <div className="max-h-36 overflow-y-auto">
                   {admins.length === 0 && !addingAdmin ? (
-                    <p className="text-xs text-zinc-400">No admins yet.</p>
+                    <p className="text-xs text-zinc-400">Nog geen beheerders.</p>
                   ) : (
                     admins.map((a) => (
                       <div key={a.id} className="flex items-center justify-between py-1">
@@ -249,14 +249,14 @@ function ClubModal({ club, onClose }: { club: Club | null; onClose: () => void }
               onClick={onClose}
               className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
             >
-              Cancel
+              Annuleren
             </button>
             <button
               type="submit"
               disabled={pending}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {pending ? "Saving…" : "Save"}
+              {pending ? "Opslaan…" : "Opslaan"}
             </button>
           </div>
         </form>

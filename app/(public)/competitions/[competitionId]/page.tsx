@@ -40,6 +40,12 @@ export default async function PublicCompetitionPage({
     },
   })
 
+  function shortName(name: string) {
+    const parts = name.trim().split(/\s+/)
+    if (parts.length === 1) return parts[0]
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`
+  }
+
   const players = competition.entries.map((e) => ({
     id: e.player.id,
     name: e.player.name,
@@ -93,7 +99,7 @@ export default async function PublicCompetitionPage({
             href="/login"
             className="rounded-md bg-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-600"
           >
-            Login
+            Inloggen
           </Link>
         </header>
       )}
@@ -101,7 +107,7 @@ export default async function PublicCompetitionPage({
       <main className="flex flex-1 flex-col gap-6 p-8">
         <div>
           <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
-            ← Back
+            ← Terug
           </Link>
         </div>
 
@@ -111,7 +117,7 @@ export default async function PublicCompetitionPage({
         </div>
 
         {players.length === 0 ? (
-          <p className="text-sm text-zinc-500">No players registered for this competition yet.</p>
+          <p className="text-sm text-zinc-500">Nog geen spelers ingeschreven voor deze competitie.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="table-fixed border-collapse text-sm">
@@ -130,11 +136,11 @@ export default async function PublicCompetitionPage({
                       className="border border-black/10 bg-zinc-50 px-1 py-2 text-center text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
                       title={col.name}
                     >
-                      <span className="block truncate">{col.name.split(" ")[0]}</span>
+                      <span className="block truncate">{shortName(col.name)}</span>
                     </th>
                   ))}
                   <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
-                    Tot.
+                    Tot
                   </th>
                 </tr>
               </thead>

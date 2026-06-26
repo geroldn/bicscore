@@ -17,20 +17,20 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6 bg-zinc-100 p-8 flex-1 dark:bg-zinc-950">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <h1 className="text-2xl font-semibold">Overzicht</h1>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {(role === "ROOT" || role === "STAFF") && (
           <DashboardCard
-            title="Manage Users"
-            description="View all users and manage their roles."
+            title="Gebruikers"
+            description="Bekijk alle gebruikers en beheer hun rollen."
             href="/dashboard/users"
           />
         )}
         {(role === "ROOT" || role === "STAFF") && (
           <DashboardCard
             title="Clubs"
-            description="Add and manage billiard clubs."
+            description="Voeg biljartsverenigingen toe en beheer ze."
             href="/dashboard/clubs"
           />
         )}
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
           <DashboardCard
             key={club.id}
             title={club.name}
-            description="Manage players and competitions for this club."
+            description="Beheer spelers en competities voor deze club."
             href={`/dashboard/clubs/${club.id}`}
           />
         ))}

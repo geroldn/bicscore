@@ -14,13 +14,13 @@ export default function UsersView({ users, sessionUserId }: { users: User[]; ses
 
   return (
     <>
-      <Breadcrumb crumbs={[{ label: "Dashboard", href: "/dashboard" }, { label: "Users" }]} />
+      <Breadcrumb crumbs={[{ label: "Overzicht", href: "/dashboard" }, { label: "Gebruikers" }]} />
 
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Manage Users</h1>
+        <h1 className="text-2xl font-semibold">Gebruikers</h1>
         <button
           onClick={() => setOpen(true)}
-          title="Add user"
+          title="Gebruiker toevoegen"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           <PlusIcon />
@@ -31,10 +31,10 @@ export default function UsersView({ users, sessionUserId }: { users: User[]; ses
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
             <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Username</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Naam</th>
+              <th className="px-4 py-3">Gebruikersnaam</th>
+              <th className="px-4 py-3">E-mail</th>
+              <th className="px-4 py-3">Rol</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -51,7 +51,7 @@ export default function UsersView({ users, sessionUserId }: { users: User[]; ses
                   {user.role !== "ROOT" && user.id !== sessionUserId && (
                     <button
                       onClick={() => setEditingUser(user)}
-                      title="Edit user"
+                      title="Gebruiker bewerken"
                       className="rounded p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
                     >
                       <EditIcon />
@@ -101,11 +101,11 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-semibold">Add User</h2>
+        <h2 className="mb-4 text-base font-semibold">Gebruiker toevoegen</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">Naam</label>
             <input
               name="name"
               type="text"
@@ -114,7 +114,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Username</label>
+            <label className="text-sm font-medium">Gebruikersnaam</label>
             <input
               name="username"
               type="text"
@@ -122,7 +122,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Email</label>
+            <label className="text-sm font-medium">E-mail</label>
             <input
               name="email"
               type="email"
@@ -130,7 +130,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Password <span className="text-red-500">*</span></label>
+            <label className="text-sm font-medium">Wachtwoord <span className="text-red-500">*</span></label>
             <input
               name="password"
               type="password"
@@ -139,7 +139,7 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Role</label>
+            <label className="text-sm font-medium">Rol</label>
             <select
               name="role"
               defaultValue="USER"
@@ -158,14 +158,14 @@ function AddUserModal({ onClose }: { onClose: () => void }) {
               onClick={onClose}
               className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
             >
-              Cancel
+              Annuleren
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Opslaan…" : "Opslaan"}
             </button>
           </div>
         </form>
@@ -205,11 +205,11 @@ function EditUserModal({ user, onClose }: { user: User; onClose: () => void }) {
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-semibold">Edit User</h2>
+        <h2 className="mb-4 text-base font-semibold">Gebruiker bewerken</h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Name</label>
+            <label className="text-sm font-medium">Naam</label>
             <input
               name="name"
               type="text"
@@ -219,7 +219,7 @@ function EditUserModal({ user, onClose }: { user: User; onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Username</label>
+            <label className="text-sm font-medium">Gebruikersnaam</label>
             <input
               name="username"
               type="text"
@@ -228,7 +228,7 @@ function EditUserModal({ user, onClose }: { user: User; onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Email</label>
+            <label className="text-sm font-medium">E-mail</label>
             <input
               name="email"
               type="email"
@@ -237,16 +237,16 @@ function EditUserModal({ user, onClose }: { user: User; onClose: () => void }) {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">New password</label>
+            <label className="text-sm font-medium">Nieuw wachtwoord</label>
             <input
               name="password"
               type="password"
-              placeholder="Leave blank to keep unchanged"
+              placeholder="Leeg laten om ongewijzigd te houden"
               className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Role</label>
+            <label className="text-sm font-medium">Rol</label>
             <select
               name="role"
               defaultValue={user.role}
@@ -265,14 +265,14 @@ function EditUserModal({ user, onClose }: { user: User; onClose: () => void }) {
               onClick={onClose}
               className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
             >
-              Cancel
+              Annuleren
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Opslaan…" : "Opslaan"}
             </button>
           </div>
         </form>

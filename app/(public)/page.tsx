@@ -34,14 +34,14 @@ export default async function HomePage() {
             href="/login"
             className="rounded-md bg-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-600"
           >
-            Login
+            Inloggen
           </Link>
         </header>
       )}
 
       <main className="flex flex-1 flex-col gap-6 p-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Competitions in progress</h1>
+          <h1 className="text-2xl font-semibold">Competities in uitvoering</h1>
           {session && (
             <Link
               href="/dashboard"
@@ -53,15 +53,15 @@ export default async function HomePage() {
         </div>
 
         {competitions.length === 0 ? (
-          <p className="text-sm text-zinc-500">No competitions currently in progress.</p>
+          <p className="text-sm text-zinc-500">Geen competities momenteel in uitvoering.</p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
             <table className="w-full text-sm">
               <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
                 <tr>
-                  <th className="px-4 py-3">Competition</th>
+                  <th className="px-4 py-3">Competitie</th>
                   <th className="px-4 py-3">Club</th>
-                  <th className="px-4 py-3">Description</th>
+                  <th className="px-4 py-3">Omschrijving</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 dark:divide-white/5">

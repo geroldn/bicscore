@@ -23,12 +23,12 @@ export default async function ClubPage({
 
   const crumbs = isStaff
     ? [
-        { label: "Dashboard", href: "/dashboard" },
+        { label: "Overzicht", href: "/dashboard" },
         { label: "Clubs", href: "/dashboard/clubs" },
         { label: club.name },
       ]
     : [
-        { label: "Dashboard", href: "/dashboard" },
+        { label: "Overzicht", href: "/dashboard" },
         { label: club.name },
       ]
 
@@ -45,13 +45,13 @@ export default async function ClubPage({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ClubCard
-          title="Players"
-          description="View and manage players in this club."
+          title="Spelers"
+          description="Bekijk en beheer spelers in deze club."
           href={`/dashboard/clubs/${club.id}/players`}
         />
         <ClubCard
-          title="Competitions"
-          description="View and manage competitions for this club."
+          title="Competities"
+          description="Bekijk en beheer competities voor deze club."
           href={`/dashboard/clubs/${club.id}/competitions`}
         />
       </div>

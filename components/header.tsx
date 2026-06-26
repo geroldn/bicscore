@@ -35,7 +35,7 @@ export default function Header({ userName, userEmail, userRole }: HeaderProps) {
         <button
           onClick={() => setOpen((o) => !o)}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-600 text-xs font-bold text-white ring-2 ring-zinc-500 hover:bg-zinc-500 hover:ring-zinc-400 transition-colors"
-          aria-label="User menu"
+          aria-label="Gebruikersmenu"
         >
           {initials}
         </button>
@@ -50,7 +50,7 @@ export default function Header({ userName, userEmail, userRole }: HeaderProps) {
               onClick={() => signOut({ callbackUrl: "/" })}
               className="w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
             >
-              Sign out
+              Uitloggen
             </button>
           </div>
         )}

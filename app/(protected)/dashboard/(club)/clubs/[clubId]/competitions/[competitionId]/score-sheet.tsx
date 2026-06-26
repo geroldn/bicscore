@@ -99,7 +99,7 @@ export default function ScoreSheet({
                 </th>
               ))}
               <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
-                Tot.
+                Tot
               </th>
             </tr>
           </thead>
@@ -238,15 +238,16 @@ function MatchModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-4 text-base font-semibold">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-zinc-900">
+        <h2 className="mb-6 text-lg font-semibold">
           {rowPlayer.name} — {colPlayer.name}
         </h2>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex items-center gap-4">
+            <span className="w-40 text-sm font-medium">{rowPlayer.name}</span>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-sm font-medium">{rowPlayer.name.split(" ")[0]}</label>
+              <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
               <input
                 type="number"
                 min={0}
@@ -257,8 +258,12 @@ function MatchModal({
                 className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
               />
             </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <span className="w-40 text-sm font-medium">{colPlayer.name}</span>
             <div className="flex flex-1 flex-col gap-1">
-              <label className="text-sm font-medium">{colPlayer.name.split(" ")[0]}</label>
+              <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
               <input
                 type="number"
                 min={0}
@@ -270,32 +275,35 @@ function MatchModal({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium">Innings</label>
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={innings}
-              onChange={(e) => setInnings(e.target.value)}
-              className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-            />
+          <div className="flex items-center gap-4">
+            <span className="w-40 text-sm font-medium">Beurten</span>
+            <div className="flex flex-1 flex-col gap-1">
+              <label className="text-xs text-zinc-500 dark:text-zinc-400">&nbsp;</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={innings}
+                onChange={(e) => setInnings(e.target.value)}
+                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+              />
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2">
+          <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
               className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
             >
-              Cancel
+              Annuleren
             </button>
             <button
               type="submit"
               disabled={saving}
               className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
             >
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Opslaan…" : "Opslaan"}
             </button>
           </div>
         </form>

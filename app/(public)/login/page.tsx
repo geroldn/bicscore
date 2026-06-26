@@ -26,7 +26,7 @@ function LoginForm() {
     setPending(false)
 
     if (result?.error) {
-      setError("Invalid email or password.")
+      setError("Ongeldig e-mailadres of wachtwoord.")
     } else {
       window.location.href = callbackUrl
     }
@@ -35,13 +35,13 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm">
       <h1 className="mb-8 text-center text-2xl font-semibold tracking-tight">
-        Sign in to Bicscore
+        Inloggen bij Bicscore
       </h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="login" className="text-sm font-medium">
-            Email or username
+            E-mail of gebruikersnaam
           </label>
           <input
             id="login"
@@ -55,7 +55,7 @@ function LoginForm() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="password" className="text-sm font-medium">
-            Password
+            Wachtwoord
           </label>
           <input
             id="password"
@@ -76,7 +76,7 @@ function LoginForm() {
           disabled={pending}
           className="mt-2 rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
         >
-          {pending ? "Signing in…" : "Sign in"}
+          {pending ? "Bezig…" : "Inloggen"}
         </button>
       </form>
     </div>
