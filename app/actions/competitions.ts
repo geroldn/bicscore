@@ -6,14 +6,18 @@ import type { CompetitionStatus } from "@/app/generated/prisma/client"
 import { getServerSession } from "next-auth/next"
 import { revalidatePath } from "next/cache"
 
-async function assertStaff() {
+async function assertClubAccess(clubId: string) {
   const session = await getServerSession(authOptions)
   const role = session?.user.role
-  if (role !== "ROOT" && role !== "STAFF") throw new Error("Unauthorized")
+  if (role === "ROOT" || role === "STAFF") return
+  if (!session?.user.id) throw new Error("Unauthorized")
+  const isAdmin =
+    (await prisma.clubAdmin.count({ where: { userId: session.user.id, clubId } })) > 0
+  if (!isAdmin) throw new Error("Unauthorized")
 }
 
 export async function createCompetition(clubId: string, formData: FormData) {
-  await assertStaff()
+  await assertClubAccess(clubId)
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
@@ -25,7 +29,7 @@ export async function createCompetition(clubId: string, formData: FormData) {
 }
 
 export async function updateCompetition(competitionId: string, clubId: string, formData: FormData) {
-  await assertStaff()
+  await assertClubAccess(clubId)
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
@@ -41,7 +45,7 @@ export async function updateCompetition(competitionId: string, clubId: string, f
 }
 
 export async function getCompetitionPlayers(competitionId: string, clubId: string) {
-  await assertStaff()
+  await assertClubAccess(clubId)
 
   const [entries, memberships] = await Promise.all([
     prisma.competitionEntry.findMany({
@@ -75,7 +79,9 @@ export async function addPlayerToCompetition(
   playerId: string,
   tmc: number | null,
 ) {
-  await assertStaff()
+  const competition = await prisma.competition.findUnique({ where: { id: competitionId }, select: { clubId: true } })
+  if (!competition) throw new Error("Competition not found")
+  await assertClubAccess(competition.clubId)
 
   return prisma.competitionEntry.create({
     data: { competitionId, playerId, tmc },
@@ -88,7 +94,12 @@ export async function addPlayerToCompetition(
 }
 
 export async function updateEntryTmc(entryId: string, tmc: number | null) {
-  await assertStaff()
+  const entry = await prisma.competitionEntry.findUnique({
+    where: { id: entryId },
+    select: { competition: { select: { clubId: true } } },
+  })
+  if (!entry) throw new Error("Entry not found")
+  await assertClubAccess(entry.competition.clubId)
 
   await prisma.competitionEntry.update({
     where: { id: entryId },
@@ -97,7 +108,12 @@ export async function updateEntryTmc(entryId: string, tmc: number | null) {
 }
 
 export async function removePlayerFromCompetition(entryId: string) {
-  await assertStaff()
+  const entry = await prisma.competitionEntry.findUnique({
+    where: { id: entryId },
+    select: { competition: { select: { clubId: true } } },
+  })
+  if (!entry) throw new Error("Entry not found")
+  await assertClubAccess(entry.competition.clubId)
 
   await prisma.competitionEntry.delete({ where: { id: entryId } })
 }
@@ -130,7 +146,7 @@ export async function upsertMatchResult(
   carambolesCol: number | null,
   innings: number | null,
 ) {
-  await assertStaff()
+  await assertClubAccess(clubId)
 
   const sel = {
     id: true,

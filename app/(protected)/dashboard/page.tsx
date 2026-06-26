@@ -37,9 +37,9 @@ export default async function DashboardPage() {
         {clubAdminships.map(({ club }) => (
           <DashboardCard
             key={club.id}
-            title={`${club.name} competitions`}
-            description={`Manage competitions for ${club.name}.`}
-            href={`/dashboard/clubs/${club.id}/competitions`}
+            title={club.name}
+            description="Manage players and competitions for this club."
+            href={`/dashboard/clubs/${club.id}`}
           />
         ))}
       </div>

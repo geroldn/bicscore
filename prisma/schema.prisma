@@ -13,11 +13,6 @@ enum UserRole {
   USER
 }
 
-enum ClubMemberRole {
-  ADMIN
-  MEMBER
-}
-
 enum CompetitionFormat {
   ROUND_ROBIN
 }
@@ -122,11 +117,10 @@ model ClubAdmin {
 }
 
 model ClubMembership {
-  id        String         @id @default(cuid())
+  id        String   @id @default(cuid())
   playerId  String
   clubId    String
-  role      ClubMemberRole @default(MEMBER)
-  joinedAt  DateTime       @default(now())
+  joinedAt  DateTime @default(now())
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   club   Club   @relation(fields: [clubId], references: [id], onDelete: Cascade)

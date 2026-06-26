@@ -1,5 +1,7 @@
 import Breadcrumb from "@/components/breadcrumb"
+import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth/next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -9,6 +11,8 @@ export default async function ClubPage({
   params: Promise<{ clubId: string }>
 }) {
   const { clubId } = await params
+  const session = await getServerSession(authOptions)
+  const isStaff = session?.user.role === "ROOT" || session?.user.role === "STAFF"
 
   const club = await prisma.club.findUnique({
     where: { id: clubId },
@@ -17,13 +21,20 @@ export default async function ClubPage({
 
   if (!club) notFound()
 
-  return (
-    <div className="flex flex-col gap-6 bg-zinc-100 p-8 flex-1 dark:bg-zinc-950">
-      <Breadcrumb crumbs={[
+  const crumbs = isStaff
+    ? [
         { label: "Dashboard", href: "/dashboard" },
         { label: "Clubs", href: "/dashboard/clubs" },
         { label: club.name },
-      ]} />
+      ]
+    : [
+        { label: "Dashboard", href: "/dashboard" },
+        { label: club.name },
+      ]
+
+  return (
+    <div className="flex flex-col gap-6 bg-zinc-100 p-8 flex-1 dark:bg-zinc-950">
+      <Breadcrumb crumbs={crumbs} />
 
       <div>
         <h1 className="text-2xl font-semibold">{club.name}</h1>
