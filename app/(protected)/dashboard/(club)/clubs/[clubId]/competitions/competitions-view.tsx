@@ -15,8 +15,8 @@ import { useEffect, useState } from "react"
 
 type Club = { id: string; name: string }
 type Competition = { id: string; name: string; description: string | null; status: string }
-type Entry = { id: string; tmc: number | null; player: { id: string; name: string; tmc: number | null } }
-type AvailablePlayer = { id: string; name: string; tmc: number | null }
+type Entry = { id: string; tmc: number | null; player: { id: string; name: string } }
+type AvailablePlayer = { id: string; name: string; currentTmc: number | null }
 
 export default function CompetitionsView({
   club,
@@ -185,7 +185,7 @@ function CompetitionModal({
     const entry = await addPlayerToCompetition(competition.id, addPlayerId, tmc)
     const player = available.find((p) => p.id === addPlayerId)!
     setEntries((prev) =>
-      [...prev, { ...entry, player: { id: player.id, name: player.name, tmc: player.tmc } }]
+      [...prev, { ...entry, player: { id: player.id, name: player.name } }]
         .sort((a, b) => a.player.name.localeCompare(b.player.name))
     )
     setAvailable((prev) => prev.filter((p) => p.id !== addPlayerId))
@@ -211,7 +211,7 @@ function CompetitionModal({
     setEntries((prev) => prev.filter((e) => e.id !== entryId))
     if (removed) {
       setAvailable((prev) =>
-        [...prev, { id: removed.player.id, name: removed.player.name, tmc: removed.player.tmc }]
+        [...prev, { id: removed.player.id, name: removed.player.name, currentTmc: null }]
           .sort((a, b) => a.name.localeCompare(b.name))
       )
     }
@@ -301,7 +301,7 @@ function CompetitionModal({
                         onChange={(e) => {
                           const player = available.find((p) => p.id === e.target.value)
                           setAddPlayerId(e.target.value)
-                          setAddTmc(player?.tmc?.toString() ?? "")
+                          setAddTmc(player?.currentTmc?.toString() ?? "")
                         }}
                         className="min-w-0 flex-1 rounded border border-black/20 px-2 py-1 text-sm dark:border-white/20 dark:bg-zinc-800"
                       >

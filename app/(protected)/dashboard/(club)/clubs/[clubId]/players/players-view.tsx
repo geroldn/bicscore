@@ -3,12 +3,22 @@
 import { createPlayer, updatePlayer } from "@/app/actions/players"
 import Breadcrumb from "@/components/breadcrumb"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 type Club = { id: string; name: string }
-type Player = { id: string; name: string; moyenne: number | null; tmc: number | null }
+type Season = { id: string; name: string }
+type TmcRecord = { id: string; tmc: number; seasonId: string; season: { name: string } }
+type Player = { id: string; name: string; currentTmc: number | null; tmcHistory: TmcRecord[] }
 
-export default function PlayersView({ club, players }: { club: Club; players: Player[] }) {
+export default function PlayersView({
+  club,
+  players,
+  seasons,
+}: {
+  club: Club
+  players: Player[]
+  seasons: Season[]
+}) {
   const [editing, setEditing] = useState<Player | null>(null)
   const [open, setOpen] = useState(false)
 
@@ -44,8 +54,7 @@ export default function PlayersView({ club, players }: { club: Club; players: Pl
             <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
               <tr>
                 <th className="px-4 py-3">Naam</th>
-                <th className="px-4 py-3">Moyenne</th>
-                <th className="px-4 py-3">TMC</th>
+                <th className="px-4 py-3">Default TMC</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -54,10 +63,7 @@ export default function PlayersView({ club, players }: { club: Club; players: Pl
                 <tr key={player.id} className="bg-white dark:bg-zinc-900">
                   <td className="px-4 py-3 font-medium">{player.name}</td>
                   <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">
-                    {player.moyenne ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">
-                    {player.tmc ?? "—"}
+                    {player.currentTmc ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -76,7 +82,7 @@ export default function PlayersView({ club, players }: { club: Club; players: Pl
       )}
 
       {open && (
-        <PlayerModal club={club} player={editing} onClose={close} />
+        <PlayerModal club={club} player={editing} seasons={seasons} onClose={close} />
       )}
     </>
   )
@@ -85,19 +91,19 @@ export default function PlayersView({ club, players }: { club: Club; players: Pl
 function PlayerModal({
   club,
   player,
+  seasons,
   onClose,
 }: {
   club: Club
   player: Player | null
+  seasons: Season[]
   onClose: () => void
 }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose()
-    }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
   }, [onClose])
@@ -141,31 +147,35 @@ function PlayerModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="moyenne" className="text-sm font-medium">Moyenne</label>
-              <input
-                id="moyenne"
-                name="moyenne"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={player?.moyenne ?? ""}
-                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-              />
+          {player && seasons.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium">TMC per seizoen</span>
+              <div className="flex flex-col gap-2 rounded-md border border-black/10 p-3 dark:border-white/10">
+                {seasons.map((season) => {
+                  const existing = player.tmcHistory.find((h) => h.seasonId === season.id)
+                  return (
+                    <div key={season.id} className="flex items-center gap-3">
+                      <label
+                        htmlFor={`tmc_${season.id}`}
+                        className="w-32 text-sm text-zinc-600 dark:text-zinc-400"
+                      >
+                        {season.name}
+                      </label>
+                      <input
+                        id={`tmc_${season.id}`}
+                        name={`tmc_${season.id}`}
+                        type="number"
+                        min="0"
+                        defaultValue={existing?.tmc ?? ""}
+                        placeholder="—"
+                        className="w-24 rounded-md border border-black/20 px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                      />
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="tmc" className="text-sm font-medium">TMC</label>
-              <input
-                id="tmc"
-                name="tmc"
-                type="number"
-                min="0"
-                defaultValue={player?.tmc ?? ""}
-                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-              />
-            </div>
-          </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <button

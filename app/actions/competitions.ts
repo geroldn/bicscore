@@ -53,14 +53,24 @@ export async function getCompetitionPlayers(competitionId: string, clubId: strin
       select: {
         id: true,
         tmc: true,
-        player: { select: { id: true, name: true, tmc: true } },
+        player: { select: { id: true, name: true } },
       },
       orderBy: { player: { name: "asc" } },
     }),
     prisma.clubMembership.findMany({
       where: { clubId },
       select: {
-        player: { select: { id: true, name: true, tmc: true } },
+        player: {
+          select: {
+            id: true,
+            name: true,
+            tmcHistory: {
+              orderBy: { season: { startDate: "desc" } },
+              take: 1,
+              select: { tmc: true },
+            },
+          },
+        },
       },
       orderBy: { player: { name: "asc" } },
     }),
@@ -68,7 +78,7 @@ export async function getCompetitionPlayers(competitionId: string, clubId: strin
 
   const inCompetition = new Set(entries.map((e) => e.player.id))
   const available = memberships
-    .map((m) => m.player)
+    .map((m) => ({ ...m.player, currentTmc: m.player.tmcHistory[0]?.tmc ?? null }))
     .filter((p) => !inCompetition.has(p.id))
 
   return { entries, available }
@@ -88,7 +98,7 @@ export async function addPlayerToCompetition(
     select: {
       id: true,
       tmc: true,
-      player: { select: { id: true, name: true, tmc: true } },
+      player: { select: { id: true, name: true } },
     },
   })
 }

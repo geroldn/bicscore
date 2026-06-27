@@ -18,16 +18,12 @@ export async function createPlayer(clubId: string, formData: FormData) {
   await assertClubAccess(clubId)
 
   const name = (formData.get("name") as string).trim()
-  const moyenne = formData.get("moyenne") ? parseFloat(formData.get("moyenne") as string) : null
-  const tmc = formData.get("tmc") ? parseInt(formData.get("tmc") as string) : null
 
   if (!name) return
 
   await prisma.player.create({
     data: {
       name,
-      moyenne,
-      tmc,
       clubMemberships: {
         create: { clubId },
       },
@@ -41,15 +37,26 @@ export async function updatePlayer(playerId: string, clubId: string, formData: F
   await assertClubAccess(clubId)
 
   const name = (formData.get("name") as string).trim()
-  const moyenne = formData.get("moyenne") ? parseFloat(formData.get("moyenne") as string) : null
-  const tmc = formData.get("tmc") ? parseInt(formData.get("tmc") as string) : null
 
   if (!name) return
 
   await prisma.player.update({
     where: { id: playerId },
-    data: { name, moyenne, tmc },
+    data: { name },
   })
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("tmc_")) continue
+    const seasonId = key.slice(4)
+    const tmc = (value as string).trim() ? parseInt(value as string) : null
+    if (tmc !== null) {
+      await prisma.playerTmc.upsert({
+        where: { playerId_seasonId: { playerId, seasonId } },
+        update: { tmc },
+        create: { playerId, seasonId, tmc },
+      })
+    }
+  }
 
   revalidatePath(`/dashboard/clubs/${clubId}/players`)
 }
