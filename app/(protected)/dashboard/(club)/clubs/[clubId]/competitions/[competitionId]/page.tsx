@@ -1,7 +1,7 @@
 import Breadcrumb from "@/components/breadcrumb"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
-import ScoreSheet from "./score-sheet"
+import ScoreSheet from "@/components/score-sheet"
 
 export default async function CompetitionPage({
   params,
@@ -38,10 +38,10 @@ export default async function CompetitionPage({
     <div className="flex flex-col gap-6 p-8">
       <Breadcrumb
         crumbs={[
-          { label: "Dashboard", href: "/dashboard" },
+          { label: "Overzicht", href: "/dashboard" },
           { label: "Clubs", href: "/dashboard/clubs" },
           { label: competition.club.name, href: `/dashboard/clubs/${clubId}` },
-          { label: "Competitions", href: `/dashboard/clubs/${clubId}/competitions` },
+          { label: "Competities", href: `/dashboard/clubs/${clubId}/competitions` },
           { label: competition.name },
         ]}
       />
@@ -53,6 +53,7 @@ export default async function CompetitionPage({
         clubId={clubId}
         players={players}
         initialMatches={matches}
+        editable
       />
     </div>
   )

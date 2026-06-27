@@ -71,6 +71,7 @@ export default async function HomePage() {
                     <tr>
                       <th className="px-4 py-3">Competitie</th>
                       <th className="px-4 py-3">Club</th>
+                      <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black/5 dark:divide-white/5">
@@ -80,6 +81,14 @@ export default async function HomePage() {
                           <Link href={`/competitions/${c.id}`} className="hover:underline">{c.name}</Link>
                         </td>
                         <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.club.name}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/competitions/${c.id}`}
+                            className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+                          >
+                            Ga naar competitie
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

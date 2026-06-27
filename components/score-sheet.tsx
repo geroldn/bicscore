@@ -26,55 +26,55 @@ export default function ScoreSheet({
   clubId,
   players,
   initialMatches,
+  editable = false,
 }: {
   competitionId: string
   clubId: string
   players: Player[]
   initialMatches: MatchRecord[]
+  editable?: boolean
 }) {
   const [matches, setMatches] = useState<MatchRecord[]>(initialMatches)
-  const [editingCell, setEditingCell] = useState<{ rowPlayer: Player; colPlayer: Player } | null>(null)
+  const [modal, setModal] = useState<{ rowPlayer: Player; colPlayer: Player } | null>(null)
 
   function getMatch(rowId: string, colId: string): MatchRecord | null {
-    return (
-      matches.find(
-        (m) =>
-          (m.playerAId === rowId && m.playerBId === colId) ||
-          (m.playerAId === colId && m.playerBId === rowId),
-      ) ?? null
-    )
+    return matches.find(
+      (m) =>
+        (m.playerAId === rowId && m.playerBId === colId) ||
+        (m.playerAId === colId && m.playerBId === rowId),
+    ) ?? null
   }
 
-  function getCellContent(rowId: string, colId: string): string | null {
+  function getCellScore(rowId: string, colId: string): number | null {
     const m = getMatch(rowId, colId)
     if (!m) return null
-    const score = m.playerAId === rowId ? m.scoreA : m.scoreB
-    return score !== null ? score.toString() : null
+    return m.playerAId === rowId ? m.scoreA : m.scoreB
   }
 
-  function isMatchUnfinished(m: MatchRecord, rowPlayer: Player, colPlayer: Player): boolean {
-    const rowCaramboles = m.playerAId === rowPlayer.id ? m.carambolesA : m.carambolesB
-    const colCaramboles = m.playerAId === rowPlayer.id ? m.carambolesB : m.carambolesA
-    if (rowCaramboles === null || colCaramboles === null) return false
-    if (rowPlayer.tmc === null || colPlayer.tmc === null) return false
-    return rowCaramboles < rowPlayer.tmc && colCaramboles < colPlayer.tmc
+  function isMatchUnfinished(rowId: string, colId: string, rowTmc: number | null, colTmc: number | null): boolean {
+    const m = getMatch(rowId, colId)
+    if (!m) return false
+    const rowCaramboles = m.playerAId === rowId ? m.carambolesA : m.carambolesB
+    const colCaramboles = m.playerAId === rowId ? m.carambolesB : m.carambolesA
+    if (rowCaramboles === null || colCaramboles === null || rowTmc === null || colTmc === null) return false
+    return rowCaramboles < rowTmc && colCaramboles < colTmc
   }
 
   function getRowTotal(rowId: string): number | null {
     const scores = players
       .filter((p) => p.id !== rowId)
-      .map((p) => {
-        const m = getMatch(rowId, p.id)
-        if (!m) return null
-        return m.playerAId === rowId ? m.scoreA : m.scoreB
-      })
+      .map((p) => getCellScore(rowId, p.id))
       .filter((s): s is number => s !== null)
     return scores.length === 0 ? null : scores.reduce((a, b) => a + b, 0)
   }
 
-  if (players.length === 0) {
-    return <p className="text-sm text-zinc-500">No players registered for this competition yet.</p>
+  function handleCellClick(row: Player, col: Player) {
+    const m = getMatch(row.id, col.id)
+    if (!editable && (!m || (m.carambolesA === null && m.carambolesB === null))) return
+    setModal({ rowPlayer: row, colPlayer: col })
   }
+
+  const modalMatch = modal ? getMatch(modal.rowPlayer.id, modal.colPlayer.id) : null
 
   return (
     <>
@@ -130,23 +130,18 @@ export default function ScoreSheet({
                         />
                       )
                     }
-
-                    const content = getCellContent(row.id, col.id)
+                    const score = getCellScore(row.id, col.id)
+                    const unfinished = score !== null && isMatchUnfinished(row.id, col.id, row.tmc, col.tmc)
                     const m = getMatch(row.id, col.id)
-                    const unfinished = m !== null && content !== null && isMatchUnfinished(m, row, col)
-
+                    const hasDetail = !editable && m && (m.carambolesA !== null || m.carambolesB !== null)
+                    const clickable = editable || hasDetail
                     return (
                       <td
                         key={col.id}
-                        className="h-10 border border-black/10 p-0 dark:border-white/10"
+                        onClick={() => clickable && handleCellClick(row, col)}
+                        className={`h-10 border border-black/10 text-center text-xs font-medium tabular-nums dark:border-white/10 ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => setEditingCell({ rowPlayer: row, colPlayer: col })}
-                          className={`flex h-full w-full items-center justify-center text-xs font-medium tabular-nums hover:bg-zinc-50 dark:hover:bg-zinc-800/60 ${unfinished ? "text-red-500 dark:text-red-400" : ""}`}
-                        >
-                          {content ?? <span className="text-zinc-300 dark:text-zinc-600">·</span>}
-                        </button>
+                        {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
                       </td>
                     )
                   })}
@@ -161,28 +156,39 @@ export default function ScoreSheet({
         </table>
       </div>
 
-      {editingCell && (
+      {modal && editable && (
         <MatchModal
-          rowPlayer={editingCell.rowPlayer}
-          colPlayer={editingCell.colPlayer}
-          match={getMatch(editingCell.rowPlayer.id, editingCell.colPlayer.id)}
-          onClose={() => setEditingCell(null)}
+          rowPlayer={modal.rowPlayer}
+          colPlayer={modal.colPlayer}
+          match={modalMatch}
+          onClose={() => setModal(null)}
           onSave={async (carambolesRow, carambolesCol, innings) => {
-            const updated = await upsertMatchResult(
+            const result = await upsertMatchResult(
               competitionId,
               clubId,
-              editingCell.rowPlayer.id,
-              editingCell.colPlayer.id,
+              modal.rowPlayer.id,
+              modal.colPlayer.id,
               carambolesRow,
               carambolesCol,
               innings,
             )
-            setMatches((prev) =>
-              prev.some((m) => m.id === updated.id)
-                ? prev.map((m) => (m.id === updated.id ? updated : m))
-                : [...prev, updated],
-            )
+            setMatches((prev) => {
+              const exists = prev.find((m) => m.id === result.id)
+              return exists
+                ? prev.map((m) => (m.id === result.id ? result : m))
+                : [...prev, result]
+            })
+            setModal(null)
           }}
+        />
+      )}
+
+      {modal && !editable && modalMatch && (
+        <MatchDetailModal
+          rowPlayer={modal.rowPlayer}
+          colPlayer={modal.colPlayer}
+          match={modalMatch}
+          onClose={() => setModal(null)}
         />
       )}
     </>
@@ -230,7 +236,6 @@ function MatchModal({
     setSaving(true)
     await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings))
     setSaving(false)
-    onClose()
   }
 
   return (
@@ -307,6 +312,82 @@ function MatchModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+function MatchDetailModal({
+  rowPlayer,
+  colPlayer,
+  match,
+  onClose,
+}: {
+  rowPlayer: Player
+  colPlayer: Player
+  match: MatchRecord
+  onClose: () => void
+}) {
+  const isRowA = match.playerAId === rowPlayer.id
+  const carambolesRow = isRowA ? match.carambolesA : match.carambolesB
+  const carambolesCol = isRowA ? match.carambolesB : match.carambolesA
+  const scoreRow = isRowA ? match.scoreA : match.scoreB
+  const scoreCol = isRowA ? match.scoreB : match.scoreA
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-zinc-900">
+        <h2 className="mb-6 text-lg font-semibold">
+          {rowPlayer.name} — {colPlayer.name}
+        </h2>
+
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium">{rowPlayer.name}</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{carambolesRow ?? "—"} caramboles</span>
+              {carambolesRow !== null && match.innings ? (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(carambolesRow / match.innings).toFixed(3)} moyenne</span>
+              ) : null}
+            </div>
+            <span className="text-right text-base font-bold">{scoreRow ?? "—"} pt</span>
+          </div>
+          <div className="grid grid-cols-3 items-center gap-4">
+            <span className="text-sm font-medium">{colPlayer.name}</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{carambolesCol ?? "—"} caramboles</span>
+              {carambolesCol !== null && match.innings ? (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(carambolesCol / match.innings).toFixed(3)} moyenne</span>
+              ) : null}
+            </div>
+            <span className="text-right text-base font-bold">{scoreCol ?? "—"} pt</span>
+          </div>
+          <div className="border-t border-black/10 pt-3 dark:border-white/10">
+            <div className="grid grid-cols-3 items-center gap-4">
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">Beurten</span>
+              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.innings ?? "—"} beurten</span>
+              <span />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="rounded-md border border-black/20 px-4 py-2 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
+          >
+            Sluiten
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import Header from "@/components/header"
+import ScoreSheet from "@/components/score-sheet"
 import { getServerSession } from "next-auth/next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -40,49 +41,11 @@ export default async function PublicCompetitionPage({
     },
   })
 
-  function shortName(name: string) {
-    const parts = name.trim().split(/\s+/)
-    if (parts.length === 1) return parts[0]
-    return `${parts[0]} ${parts[parts.length - 1][0]}.`
-  }
-
   const players = competition.entries.map((e) => ({
     id: e.player.id,
     name: e.player.name,
     tmc: e.tmc,
   }))
-
-  function getMatch(rowId: string, colId: string) {
-    return matches.find(
-      (m) =>
-        (m.playerAId === rowId && m.playerBId === colId) ||
-        (m.playerAId === colId && m.playerBId === rowId),
-    ) ?? null
-  }
-
-  function getCellScore(rowId: string, colId: string): number | null {
-    const m = getMatch(rowId, colId)
-    if (!m) return null
-    const score = m.playerAId === rowId ? m.scoreA : m.scoreB
-    return score
-  }
-
-  function isUnfinished(rowId: string, colId: string, rowTmc: number | null, colTmc: number | null): boolean {
-    const m = getMatch(rowId, colId)
-    if (!m) return false
-    const rowCaramboles = m.playerAId === rowId ? m.carambolesA : m.carambolesB
-    const colCaramboles = m.playerAId === rowId ? m.carambolesB : m.carambolesA
-    if (rowCaramboles === null || colCaramboles === null || rowTmc === null || colTmc === null) return false
-    return rowCaramboles < rowTmc && colCaramboles < colTmc
-  }
-
-  function getRowTotal(rowId: string): number | null {
-    const scores = players
-      .filter((p) => p.id !== rowId)
-      .map((p) => getCellScore(rowId, p.id))
-      .filter((s): s is number => s !== null)
-    return scores.length === 0 ? null : scores.reduce((a, b) => a + b, 0)
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -119,79 +82,12 @@ export default async function PublicCompetitionPage({
         {players.length === 0 ? (
           <p className="text-sm text-zinc-500">Nog geen spelers ingeschreven voor deze competitie.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table-fixed border-collapse text-sm">
-              <colgroup>
-                <col className="w-44" />
-                {players.map((p) => <col key={p.id} className="w-16" />)}
-                <col className="w-16" />
-              </colgroup>
-
-              <thead>
-                <tr>
-                  <th className="border border-black/10 bg-zinc-50 dark:border-white/10 dark:bg-zinc-800" />
-                  {players.map((col) => (
-                    <th
-                      key={col.id}
-                      className="border border-black/10 bg-zinc-50 px-1 py-2 text-center text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
-                      title={col.name}
-                    >
-                      <span className="block truncate">{shortName(col.name)}</span>
-                    </th>
-                  ))}
-                  <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
-                    Tot
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {players.map((row) => {
-                  const total = getRowTotal(row.id)
-                  return (
-                    <tr key={row.id}>
-                      <td
-                        className="border border-black/10 bg-zinc-50 py-1 pl-3 pr-4 text-right text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
-                        title={row.name}
-                      >
-                        <span className="block truncate">
-                          {row.name}
-                          {row.tmc !== null && (
-                            <span className="ml-1 font-normal text-zinc-400">({row.tmc})</span>
-                          )}
-                        </span>
-                      </td>
-
-                      {players.map((col) => {
-                        if (row.id === col.id) {
-                          return (
-                            <td
-                              key={col.id}
-                              className="h-10 border border-black/10 bg-zinc-100 dark:border-white/10 dark:bg-zinc-900"
-                            />
-                          )
-                        }
-                        const score = getCellScore(row.id, col.id)
-                        const unfinished = score !== null && isUnfinished(row.id, col.id, row.tmc, col.tmc)
-                        return (
-                          <td
-                            key={col.id}
-                            className={`h-10 border border-black/10 text-center text-xs font-medium tabular-nums dark:border-white/10 ${unfinished ? "text-red-500 dark:text-red-400" : ""}`}
-                          >
-                            {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
-                          </td>
-                        )
-                      })}
-
-                      <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center text-sm font-semibold text-zinc-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300">
-                        {total !== null ? total : ""}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ScoreSheet
+            competitionId={competitionId}
+            clubId=""
+            players={players}
+            initialMatches={matches}
+          />
         )}
       </main>
     </div>
