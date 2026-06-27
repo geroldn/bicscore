@@ -7,17 +7,23 @@ import Link from "next/link"
 export default async function HomePage() {
   const session = await getServerSession(authOptions)
 
-  const competitions = await prisma.competition.findMany({
-    where: { status: "IN_PROGRESS" },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      club: { select: { name: true } },
-    },
-
-    orderBy: { name: "asc" },
-  })
+  const [competitions, posts] = await Promise.all([
+    prisma.competition.findMany({
+      where: { status: "IN_PROGRESS" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        club: { select: { name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.post.findMany({
+      where: { status: "PUBLISHED" },
+      select: { id: true, title: true, content: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -41,7 +47,7 @@ export default async function HomePage() {
 
       <main className="flex flex-1 flex-col gap-6 p-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Competities in uitvoering</h1>
+          <h1 className="text-2xl font-semibold">Bicscore</h1>
           {session && (
             <Link
               href="/dashboard"
@@ -52,32 +58,52 @@ export default async function HomePage() {
           )}
         </div>
 
-        {competitions.length === 0 ? (
-          <p className="text-sm text-zinc-500">Geen competities momenteel in uitvoering.</p>
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                <tr>
-                  <th className="px-4 py-3">Competitie</th>
-                  <th className="px-4 py-3">Club</th>
-                  <th className="px-4 py-3">Omschrijving</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                {competitions.map((c) => (
-                  <tr key={c.id} className="bg-white dark:bg-zinc-900">
-                    <td className="px-4 py-3 font-medium">
-                      <Link href={`/competitions/${c.id}`} className="hover:underline">{c.name}</Link>
-                    </td>
-                    <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.club.name}</td>
-                    <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.description ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          {/* Left: competitions */}
+          <div className="flex flex-col gap-3">
+            <h2 className="text-base font-semibold">Lopende competities</h2>
+            {competitions.length === 0 ? (
+              <p className="text-sm text-zinc-500">Geen competities momenteel in uitvoering.</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10">
+                <table className="w-full text-sm">
+                  <thead className="bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                    <tr>
+                      <th className="px-4 py-3">Competitie</th>
+                      <th className="px-4 py-3">Club</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
+                    {competitions.map((c) => (
+                      <tr key={c.id} className="bg-white dark:bg-zinc-900">
+                        <td className="px-4 py-3 font-medium">
+                          <Link href={`/competitions/${c.id}`} className="hover:underline">{c.name}</Link>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-500 dark:text-zinc-400">{c.club.name}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Right: posts */}
+          <div className="flex flex-col gap-4">
+            <h2 className="text-base font-semibold">Berichten</h2>
+            {posts.length === 0 ? (
+              <p className="text-sm text-zinc-500">Geen berichten beschikbaar.</p>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="rounded-lg border border-black/10 bg-white p-5 dark:border-white/10 dark:bg-zinc-900">
+                  <p className="mb-1 text-xs text-zinc-400">{post.createdAt.toLocaleDateString("nl-NL")}</p>
+                  <h3 className="mb-2 text-sm font-semibold">{post.title}</h3>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap">{post.content}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </main>
     </div>
   )

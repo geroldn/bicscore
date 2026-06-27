@@ -34,6 +34,13 @@ export default async function DashboardPage() {
             href="/dashboard/clubs"
           />
         )}
+        {(role === "ROOT" || role === "STAFF") && (
+          <DashboardCard
+            title="Berichten"
+            description="Schrijf en beheer berichten en nieuws."
+            href="/dashboard/posts"
+          />
+        )}
         {clubAdminships.map(({ club }) => (
           <DashboardCard
             key={club.id}
