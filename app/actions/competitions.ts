@@ -106,15 +106,39 @@ export async function addPlayerToCompetition(
 export async function updateEntryTmc(entryId: string, tmc: number | null) {
   const entry = await prisma.competitionEntry.findUnique({
     where: { id: entryId },
-    select: { competition: { select: { clubId: true } } },
+    select: {
+      playerId: true,
+      competitionId: true,
+      competition: { select: { clubId: true } },
+    },
   })
   if (!entry) throw new Error("Entry not found")
   await assertClubAccess(entry.competition.clubId)
 
-  await prisma.competitionEntry.update({
-    where: { id: entryId },
-    data: { tmc },
+  await prisma.competitionEntry.update({ where: { id: entryId }, data: { tmc } })
+
+  const matches = await prisma.match.findMany({
+    where: {
+      competitionId: entry.competitionId,
+      OR: [{ playerAId: entry.playerId }, { playerBId: entry.playerId }],
+    },
+    select: { id: true, playerAId: true, playerBId: true, carambolesA: true, carambolesB: true },
   })
+
+  for (const match of matches) {
+    const otherPlayerId = match.playerAId === entry.playerId ? match.playerBId : match.playerAId
+    const otherEntry = await prisma.competitionEntry.findFirst({
+      where: { competitionId: entry.competitionId, playerId: otherPlayerId },
+      select: { tmc: true },
+    })
+    const isPlayerA = match.playerAId === entry.playerId
+    const tmcA = isPlayerA ? tmc : (otherEntry?.tmc ?? null)
+    const tmcB = isPlayerA ? (otherEntry?.tmc ?? null) : tmc
+    await prisma.match.update({
+      where: { id: match.id },
+      data: calcScores(match.carambolesA, match.carambolesB, tmcA, tmcB),
+    })
+  }
 }
 
 export async function removePlayerFromCompetition(entryId: string) {

@@ -116,7 +116,7 @@ export default function ScoreSheet({
                     <span className="block truncate">
                       {row.name}
                       {row.tmc !== null && (
-                        <span className="ml-1 font-normal text-zinc-400">({row.tmc})</span>
+                        <span className="ml-1 font-normal">({row.tmc})</span>
                       )}
                     </span>
                   </td>
@@ -249,51 +249,62 @@ function MatchModal({
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-          <div className="flex items-center gap-4">
-            <span className="w-40 text-sm font-medium">{rowPlayer.name}</span>
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={carambolesRow}
-                onChange={(e) => setCarambolesRow(e.target.value)}
-                autoFocus
-                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-              />
-            </div>
-          </div>
+          {(() => {
+            const inn = parseInt(innings, 10)
+            const moyRow = inn > 0 && carambolesRow !== "" ? (parseInt(carambolesRow, 10) / inn).toFixed(3) : null
+            const moyCol = inn > 0 && carambolesCol !== "" ? (parseInt(carambolesCol, 10) / inn).toFixed(3) : null
+            return (
+              <>
+                <div className="flex items-center gap-4">
+                  <span className="w-40 text-sm font-medium">{rowPlayer.name}{rowPlayer.tmc !== null && ` (${rowPlayer.tmc})`}</span>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={carambolesRow}
+                      onChange={(e) => setCarambolesRow(e.target.value)}
+                      autoFocus
+                      className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                    />
+                    {moyRow && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyRow} moyenne</span>}
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-4">
-            <span className="w-40 text-sm font-medium">{colPlayer.name}</span>
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={carambolesCol}
-                onChange={(e) => setCarambolesCol(e.target.value)}
-                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-              />
-            </div>
-          </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-40 text-sm font-medium">{colPlayer.name}{colPlayer.tmc !== null && ` (${colPlayer.tmc})`}</span>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={carambolesCol}
+                      onChange={(e) => setCarambolesCol(e.target.value)}
+                      className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                    />
+                    {moyCol && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyCol} moyenne</span>}
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-4">
-            <span className="w-40 text-sm font-medium">Beurten</span>
-            <div className="flex flex-1 flex-col gap-1">
-              <label className="text-xs text-zinc-500 dark:text-zinc-400">&nbsp;</label>
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={innings}
-                onChange={(e) => setInnings(e.target.value)}
-                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-              />
-            </div>
-          </div>
+                <div className="flex items-center gap-4">
+                  <span className="w-40 text-sm font-medium">Beurten</span>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <label className="text-xs text-zinc-500 dark:text-zinc-400">&nbsp;</label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={innings}
+                      onChange={(e) => setInnings(e.target.value)}
+                      className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                    />
+                  </div>
+                </div>
+              </>
+            )
+          })()}
 
           <div className="mt-2 flex justify-end gap-2">
             <button

@@ -1,7 +1,7 @@
 import Breadcrumb from "@/components/breadcrumb"
 import { prisma } from "@/lib/prisma"
 import { notFound } from "next/navigation"
-import ScoreSheet from "@/components/score-sheet"
+import CompetitionDetailView from "./competition-detail-view"
 
 export default async function CompetitionPage({
   params,
@@ -48,12 +48,11 @@ export default async function CompetitionPage({
 
       <h1 className="text-2xl font-semibold">{competition.name}</h1>
 
-      <ScoreSheet
+      <CompetitionDetailView
         competitionId={competitionId}
         clubId={clubId}
         players={players}
         initialMatches={matches}
-        editable
       />
     </div>
   )
