@@ -213,21 +213,22 @@ export async function upsertMatchResult(
   const tmcRow = tmcEntries.find((e) => e.playerId === rowPlayerId)?.tmc ?? null
   const tmcCol = tmcEntries.find((e) => e.playerId === colPlayerId)?.tmc ?? null
 
+  const scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
   let result
   if (existing) {
-    const isRowA = existing.playerAId === rowPlayerId
-    const storedA = isRowA ? carambolesRow : carambolesCol
-    const storedB = isRowA ? carambolesCol : carambolesRow
-    const tmcA = isRowA ? tmcRow : tmcCol
-    const tmcB = isRowA ? tmcCol : tmcRow
-    const scores = calcScores(storedA, storedB, tmcA, tmcB)
     result = await prisma.match.update({
       where: { id: existing.id },
-      data: { carambolesA: storedA, carambolesB: storedB, innings, ...scores },
+      data: {
+        playerAId: rowPlayerId,
+        playerBId: colPlayerId,
+        carambolesA: carambolesRow,
+        carambolesB: carambolesCol,
+        innings,
+        ...scores,
+      },
       select: sel,
     })
   } else {
-    const scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
     result = await prisma.match.create({
       data: {
         competitionId,

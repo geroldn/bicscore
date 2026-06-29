@@ -162,14 +162,18 @@ export default function ScoreSheet({
           colPlayer={modal.colPlayer}
           match={modalMatch}
           onClose={() => setModal(null)}
-          onSave={async (carambolesRow, carambolesCol, innings) => {
+          onSave={async (carambolesRow, carambolesCol, innings, swapped) => {
+            const playerAId = swapped ? modal.colPlayer.id : modal.rowPlayer.id
+            const playerBId = swapped ? modal.rowPlayer.id : modal.colPlayer.id
+            const carambolesA = swapped ? carambolesCol : carambolesRow
+            const carambolesB = swapped ? carambolesRow : carambolesCol
             const result = await upsertMatchResult(
               competitionId,
               clubId,
-              modal.rowPlayer.id,
-              modal.colPlayer.id,
-              carambolesRow,
-              carambolesCol,
+              playerAId,
+              playerBId,
+              carambolesA,
+              carambolesB,
               innings,
             )
             setMatches((prev) => {
@@ -206,7 +210,7 @@ function MatchModal({
   colPlayer: Player
   match: MatchRecord | null
   onClose: () => void
-  onSave: (carambolesRow: number | null, carambolesCol: number | null, innings: number | null) => Promise<void>
+  onSave: (carambolesRow: number | null, carambolesCol: number | null, innings: number | null, swapped: boolean) => Promise<void>
 }) {
   const initCarambolesRow = match
     ? (match.playerAId === rowPlayer.id ? match.carambolesA : match.carambolesB)
@@ -219,6 +223,14 @@ function MatchModal({
   const [carambolesCol, setCarambolesCol] = useState(initCarambolesCol?.toString() ?? "")
   const [innings, setInnings] = useState(match?.innings?.toString() ?? "")
   const [saving, setSaving] = useState(false)
+  const [swapped, setSwapped] = useState(false)
+
+  const topPlayer = swapped ? colPlayer : rowPlayer
+  const topCaramboles = swapped ? carambolesCol : carambolesRow
+  const setTopCaramboles = swapped ? setCarambolesCol : setCarambolesRow
+  const bottomPlayer = swapped ? rowPlayer : colPlayer
+  const bottomCaramboles = swapped ? carambolesRow : carambolesCol
+  const setBottomCaramboles = swapped ? setCarambolesRow : setCarambolesCol
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
@@ -234,7 +246,7 @@ function MatchModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings))
+    await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings), swapped)
     setSaving(false)
   }
 
@@ -244,47 +256,57 @@ function MatchModal({
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-6 text-lg font-semibold">
-          {rowPlayer.name} — {colPlayer.name}
-        </h2>
+        <div className="mb-6 flex items-center gap-2">
+          <h2 className="flex-1 text-lg font-semibold">
+            {topPlayer.name} — {bottomPlayer.name}
+          </h2>
+          <button
+            type="button"
+            onClick={() => setSwapped((s) => !s)}
+            title="Spelers wisselen"
+            className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            <SwapIcon />
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {(() => {
             const inn = parseInt(innings, 10)
-            const moyRow = inn > 0 && carambolesRow !== "" ? (parseInt(carambolesRow, 10) / inn).toFixed(3) : null
-            const moyCol = inn > 0 && carambolesCol !== "" ? (parseInt(carambolesCol, 10) / inn).toFixed(3) : null
+            const moyTop = inn > 0 && topCaramboles !== "" ? (parseInt(topCaramboles, 10) / inn).toFixed(3) : null
+            const moyBottom = inn > 0 && bottomCaramboles !== "" ? (parseInt(bottomCaramboles, 10) / inn).toFixed(3) : null
             return (
               <>
                 <div className="flex items-center gap-4">
-                  <span className="w-40 text-sm font-medium">{rowPlayer.name}{rowPlayer.tmc !== null && ` (${rowPlayer.tmc})`}</span>
+                  <span className="w-40 text-sm font-medium">{topPlayer.name}{topPlayer.tmc !== null && ` (${topPlayer.tmc})`}</span>
                   <div className="flex flex-1 flex-col gap-1">
                     <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
                     <input
                       type="number"
                       min={0}
                       step={1}
-                      value={carambolesRow}
-                      onChange={(e) => setCarambolesRow(e.target.value)}
+                      value={topCaramboles}
+                      onChange={(e) => setTopCaramboles(e.target.value)}
                       autoFocus
                       className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
                     />
-                    {moyRow && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyRow} moyenne</span>}
+                    {moyTop && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyTop} moyenne</span>}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <span className="w-40 text-sm font-medium">{colPlayer.name}{colPlayer.tmc !== null && ` (${colPlayer.tmc})`}</span>
+                  <span className="w-40 text-sm font-medium">{bottomPlayer.name}{bottomPlayer.tmc !== null && ` (${bottomPlayer.tmc})`}</span>
                   <div className="flex flex-1 flex-col gap-1">
                     <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
                     <input
                       type="number"
                       min={0}
                       step={1}
-                      value={carambolesCol}
-                      onChange={(e) => setCarambolesCol(e.target.value)}
+                      value={bottomCaramboles}
+                      onChange={(e) => setBottomCaramboles(e.target.value)}
                       className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
                     />
-                    {moyCol && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyCol} moyenne</span>}
+                    {moyBottom && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyBottom} moyenne</span>}
                   </div>
                 </div>
 
@@ -339,11 +361,8 @@ function MatchDetailModal({
   match: MatchRecord
   onClose: () => void
 }) {
-  const isRowA = match.playerAId === rowPlayer.id
-  const carambolesRow = isRowA ? match.carambolesA : match.carambolesB
-  const carambolesCol = isRowA ? match.carambolesB : match.carambolesA
-  const scoreRow = isRowA ? match.scoreA : match.scoreB
-  const scoreCol = isRowA ? match.scoreB : match.scoreA
+  const playerA = match.playerAId === rowPlayer.id ? rowPlayer : colPlayer
+  const playerB = match.playerAId === rowPlayer.id ? colPlayer : rowPlayer
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
@@ -358,29 +377,29 @@ function MatchDetailModal({
     >
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-zinc-900">
         <h2 className="mb-6 text-lg font-semibold">
-          {rowPlayer.name} — {colPlayer.name}
+          {playerA.name} — {playerB.name}
         </h2>
 
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-sm font-medium">{rowPlayer.name}</span>
+            <span className="text-sm font-medium">{playerA.name}</span>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{carambolesRow ?? "—"} caramboles</span>
-              {carambolesRow !== null && match.innings ? (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(carambolesRow / match.innings).toFixed(3)} moyenne</span>
+              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesA ?? "—"} caramboles</span>
+              {match.carambolesA !== null && match.innings ? (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesA / match.innings).toFixed(3)} moyenne</span>
               ) : null}
             </div>
-            <span className="text-right text-base font-bold">{scoreRow ?? "—"} pt</span>
+            <span className="text-right text-base font-bold">{match.scoreA ?? "—"} pt</span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-sm font-medium">{colPlayer.name}</span>
+            <span className="text-sm font-medium">{playerB.name}</span>
             <div className="flex flex-col">
-              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{carambolesCol ?? "—"} caramboles</span>
-              {carambolesCol !== null && match.innings ? (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(carambolesCol / match.innings).toFixed(3)} moyenne</span>
+              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesB ?? "—"} caramboles</span>
+              {match.carambolesB !== null && match.innings ? (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesB / match.innings).toFixed(3)} moyenne</span>
               ) : null}
             </div>
-            <span className="text-right text-base font-bold">{scoreCol ?? "—"} pt</span>
+            <span className="text-right text-base font-bold">{match.scoreB ?? "—"} pt</span>
           </div>
           <div className="border-t border-black/10 pt-3 dark:border-white/10">
             <div className="grid grid-cols-3 items-center gap-4">
@@ -401,5 +420,14 @@ function MatchDetailModal({
         </div>
       </div>
     </div>
+  )
+}
+
+function SwapIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 16V4m0 0L3 8m4-4l4 4" />
+      <path d="M17 8v12m0 0l4-4m-4 4l-4-4" />
+    </svg>
   )
 }
