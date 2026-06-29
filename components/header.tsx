@@ -29,7 +29,7 @@ export default function Header({ userName, userEmail, userRole }: HeaderProps) {
 
   return (
     <header className="flex h-14 items-center justify-between bg-zinc-900 px-6 shadow-md">
-      <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicscore</a>
+      <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicra</a>
 
       <div ref={ref} className="relative">
         <button

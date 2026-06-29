@@ -35,7 +35,7 @@ export default async function HomePage() {
         />
       ) : (
         <header className="flex h-14 items-center justify-between bg-zinc-900 px-6 shadow-md">
-          <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicscore</a>
+          <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicra</a>
           <Link
             href="/login"
             className="rounded-md bg-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-600"
@@ -47,7 +47,7 @@ export default async function HomePage() {
 
       <main className="flex flex-1 flex-col gap-6 p-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Bicscore</h1>
+          <h1 className="text-2xl font-semibold">Bicra</h1>
           {session && (
             <Link
               href="/dashboard"
