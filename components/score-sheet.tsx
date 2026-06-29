@@ -71,7 +71,11 @@ export default function ScoreSheet({
   function handleCellClick(row: Player, col: Player) {
     const m = getMatch(row.id, col.id)
     if (!editable && (!m || (m.carambolesA === null && m.carambolesB === null))) return
-    setModal({ rowPlayer: row, colPlayer: col })
+    if (m && m.playerAId === col.id) {
+      setModal({ rowPlayer: col, colPlayer: row })
+    } else {
+      setModal({ rowPlayer: row, colPlayer: col })
+    }
   }
 
   const modalMatch = modal ? getMatch(modal.rowPlayer.id, modal.colPlayer.id) : null
