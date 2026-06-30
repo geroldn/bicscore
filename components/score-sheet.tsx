@@ -60,12 +60,21 @@ export default function ScoreSheet({
     return rowCaramboles < rowTmc && colCaramboles < colTmc
   }
 
-  function getRowTotal(rowId: string): number | null {
+  function getCellCaramboles(rowId: string, colId: string): { row: number | null; col: number | null } {
+    const m = getMatch(rowId, colId)
+    if (!m) return { row: null, col: null }
+    return {
+      row: m.playerAId === rowId ? m.carambolesA : m.carambolesB,
+      col: m.playerAId === rowId ? m.carambolesB : m.carambolesA,
+    }
+  }
+
+  function getRowTotal(rowId: string): { points: number; matches: number } | null {
     const scores = players
       .filter((p) => p.id !== rowId)
       .map((p) => getCellScore(rowId, p.id))
       .filter((s): s is number => s !== null)
-    return scores.length === 0 ? null : scores.reduce((a, b) => a + b, 0)
+    return scores.length === 0 ? null : { points: scores.reduce((a, b) => a + b, 0), matches: scores.length }
   }
 
   function handleCellClick(row: Player, col: Player) {
@@ -80,20 +89,30 @@ export default function ScoreSheet({
 
   const modalMatch = modal ? getMatch(modal.rowPlayer.id, modal.colPlayer.id) : null
 
+  const sortedPlayers = [...players].sort((a, b) => {
+    const ta = getRowTotal(a.id)
+    const tb = getRowTotal(b.id)
+    if (ta === null && tb === null) return 0
+    if (ta === null) return 1
+    if (tb === null) return -1
+    return (tb.points / tb.matches) - (ta.points / ta.matches)
+  })
+
   return (
     <>
       <div className="overflow-x-auto">
         <table className="table-fixed border-collapse text-sm">
           <colgroup>
             <col className="w-44" />
-            {players.map((p) => <col key={p.id} className="w-16" />)}
+            {sortedPlayers.map((p) => <col key={p.id} className="w-16" />)}
+            <col className="w-16" />
             <col className="w-16" />
           </colgroup>
 
           <thead>
             <tr>
               <th className="border border-black/10 bg-zinc-50 dark:border-white/10 dark:bg-zinc-800" />
-              {players.map((col) => (
+              {sortedPlayers.map((col) => (
                 <th
                   key={col.id}
                   className="border border-black/10 bg-zinc-50 px-1 py-2 text-center text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
@@ -105,11 +124,14 @@ export default function ScoreSheet({
               <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
                 Tot
               </th>
+              <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
+                Gem
+              </th>
             </tr>
           </thead>
 
           <tbody>
-            {players.map((row) => {
+            {sortedPlayers.map((row) => {
               const total = getRowTotal(row.id)
               return (
                 <tr key={row.id}>
@@ -125,7 +147,7 @@ export default function ScoreSheet({
                     </span>
                   </td>
 
-                  {players.map((col) => {
+                  {sortedPlayers.map((col) => {
                     if (row.id === col.id) {
                       return (
                         <td
@@ -139,19 +161,44 @@ export default function ScoreSheet({
                     const m = getMatch(row.id, col.id)
                     const hasDetail = !editable && m && (m.carambolesA !== null || m.carambolesB !== null)
                     const clickable = editable || hasDetail
+                    const { row: rowCar, col: colCar } = getCellCaramboles(row.id, col.id)
                     return (
                       <td
                         key={col.id}
                         onClick={() => clickable && handleCellClick(row, col)}
-                        className={`h-10 border border-black/10 text-center text-xs font-medium tabular-nums dark:border-white/10 ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                        className={`h-10 border border-black/10 text-sm font-medium tabular-nums dark:border-white/10 ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
                       >
-                        {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
+                        <div className="flex h-full w-full flex-col">
+                          <div className="flex w-full justify-between px-0.5 pt-0.5">
+                            <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
+                              {rowCar !== null ? rowCar : <span className="invisible">0</span>}
+                            </span>
+                            <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
+                              {colCar !== null ? colCar : <span className="invisible">0</span>}
+                            </span>
+                          </div>
+                          <div className="flex flex-1 items-center justify-center">
+                            {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
+                          </div>
+                        </div>
                       </td>
                     )
                   })}
 
-                  <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center text-sm font-semibold text-zinc-700 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-300">
-                    {total !== null ? total : ""}
+                  <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
+                    {total !== null ? (
+                      <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                        {total.points}
+                        <span className="text-xs font-normal text-zinc-700 dark:text-zinc-300">/{total.matches}</span>
+                      </span>
+                    ) : ""}
+                  </td>
+                  <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
+                    {total !== null ? (
+                      <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                        {(total.points / total.matches).toFixed(1)}
+                      </span>
+                    ) : ""}
                   </td>
                 </tr>
               )
