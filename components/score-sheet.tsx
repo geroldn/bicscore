@@ -95,7 +95,9 @@ export default function ScoreSheet({
     if (ta === null && tb === null) return 0
     if (ta === null) return 1
     if (tb === null) return -1
-    return (tb.points / tb.matches) - (ta.points / ta.matches)
+    const meanDiff = (tb.points / tb.matches) - (ta.points / ta.matches)
+    if (meanDiff !== 0) return meanDiff
+    return tb.matches - ta.matches
   })
 
   return (
