@@ -70,8 +70,10 @@ export default function ScoreSheet({
   }
 
   function getRowTotal(rowId: string): { points: number; matches: number } | null {
+    const rowTmc = players.find((p) => p.id === rowId)?.tmc ?? null
     const scores = players
       .filter((p) => p.id !== rowId)
+      .filter((p) => !isMatchUnfinished(rowId, p.id, rowTmc, p.tmc))
       .map((p) => getCellScore(rowId, p.id))
       .filter((s): s is number => s !== null)
     return scores.length === 0 ? null : { points: scores.reduce((a, b) => a + b, 0), matches: scores.length }
