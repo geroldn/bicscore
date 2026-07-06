@@ -179,6 +179,7 @@ export async function upsertMatchResult(
   carambolesRow: number | null,
   carambolesCol: number | null,
   innings: number | null,
+  matchId?: string | null,
 ) {
   await assertClubAccess(clubId)
 
@@ -193,31 +194,19 @@ export async function upsertMatchResult(
     innings: true,
   } as const
 
-  const [existing, tmcEntries] = await Promise.all([
-    prisma.match.findFirst({
-      where: {
-        competitionId,
-        OR: [
-          { playerAId: rowPlayerId, playerBId: colPlayerId },
-          { playerAId: colPlayerId, playerBId: rowPlayerId },
-        ],
-      },
-      select: { id: true, playerAId: true },
-    }),
-    prisma.competitionEntry.findMany({
-      where: { competitionId, playerId: { in: [rowPlayerId, colPlayerId] } },
-      select: { playerId: true, tmc: true },
-    }),
-  ])
+  const tmcEntries = await prisma.competitionEntry.findMany({
+    where: { competitionId, playerId: { in: [rowPlayerId, colPlayerId] } },
+    select: { playerId: true, tmc: true },
+  })
 
   const tmcRow = tmcEntries.find((e) => e.playerId === rowPlayerId)?.tmc ?? null
   const tmcCol = tmcEntries.find((e) => e.playerId === colPlayerId)?.tmc ?? null
 
   const scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
   let result
-  if (existing) {
+  if (matchId) {
     result = await prisma.match.update({
-      where: { id: existing.id },
+      where: { id: matchId },
       data: {
         playerAId: rowPlayerId,
         playerBId: colPlayerId,

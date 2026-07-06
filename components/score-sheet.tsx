@@ -35,61 +35,57 @@ export default function ScoreSheet({
   editable?: boolean
 }) {
   const [matches, setMatches] = useState<MatchRecord[]>(initialMatches)
-  const [modal, setModal] = useState<{ rowPlayer: Player; colPlayer: Player } | null>(null)
+  const [modal, setModal] = useState<{ rowPlayer: Player; colPlayer: Player; matchId: string | null } | null>(null)
 
-  function getMatch(rowId: string, colId: string): MatchRecord | null {
-    return matches.find(
+  function getMatchesForPair(rowId: string, colId: string): MatchRecord[] {
+    return matches.filter(
       (m) =>
         (m.playerAId === rowId && m.playerBId === colId) ||
         (m.playerAId === colId && m.playerBId === rowId),
-    ) ?? null
+    )
   }
 
-  function getCellScore(rowId: string, colId: string): number | null {
-    const m = getMatch(rowId, colId)
-    if (!m) return null
+  function scoreForRow(m: MatchRecord, rowId: string): number | null {
     return m.playerAId === rowId ? m.scoreA : m.scoreB
   }
 
-  function isMatchUnfinished(rowId: string, colId: string, rowTmc: number | null, colTmc: number | null): boolean {
-    const m = getMatch(rowId, colId)
-    if (!m) return false
-    const rowCaramboles = m.playerAId === rowId ? m.carambolesA : m.carambolesB
+  function carambolesForRow(m: MatchRecord, rowId: string): number | null {
+    return m.playerAId === rowId ? m.carambolesA : m.carambolesB
+  }
+
+  function isMatchUnfinished(m: MatchRecord, rowId: string, rowTmc: number | null, colTmc: number | null): boolean {
+    const rowCaramboles = carambolesForRow(m, rowId)
     const colCaramboles = m.playerAId === rowId ? m.carambolesB : m.carambolesA
     if (rowCaramboles === null || colCaramboles === null || rowTmc === null || colTmc === null) return false
     return rowCaramboles < rowTmc && colCaramboles < colTmc
-  }
-
-  function getCellCaramboles(rowId: string, colId: string): { row: number | null; col: number | null } {
-    const m = getMatch(rowId, colId)
-    if (!m) return { row: null, col: null }
-    return {
-      row: m.playerAId === rowId ? m.carambolesA : m.carambolesB,
-      col: m.playerAId === rowId ? m.carambolesB : m.carambolesA,
-    }
   }
 
   function getRowTotal(rowId: string): { points: number; matches: number } | null {
     const rowTmc = players.find((p) => p.id === rowId)?.tmc ?? null
     const scores = players
       .filter((p) => p.id !== rowId)
-      .filter((p) => !isMatchUnfinished(rowId, p.id, rowTmc, p.tmc))
-      .map((p) => getCellScore(rowId, p.id))
+      .flatMap((p) => getMatchesForPair(rowId, p.id).map((m) => ({ m, opponentTmc: p.tmc })))
+      .filter(({ m, opponentTmc }) => !isMatchUnfinished(m, rowId, rowTmc, opponentTmc))
+      .map(({ m }) => scoreForRow(m, rowId))
       .filter((s): s is number => s !== null)
     return scores.length === 0 ? null : { points: scores.reduce((a, b) => a + b, 0), matches: scores.length }
   }
 
-  function handleCellClick(row: Player, col: Player) {
-    const m = getMatch(row.id, col.id)
+  function openModal(row: Player, col: Player, matchId: string | null) {
+    if (!matchId) {
+      setModal({ rowPlayer: row, colPlayer: col, matchId: null })
+      return
+    }
+    const m = matches.find((x) => x.id === matchId)
     if (!editable && (!m || (m.carambolesA === null && m.carambolesB === null))) return
     if (m && m.playerAId === col.id) {
-      setModal({ rowPlayer: col, colPlayer: row })
+      setModal({ rowPlayer: col, colPlayer: row, matchId })
     } else {
-      setModal({ rowPlayer: row, colPlayer: col })
+      setModal({ rowPlayer: row, colPlayer: col, matchId })
     }
   }
 
-  const modalMatch = modal ? getMatch(modal.rowPlayer.id, modal.colPlayer.id) : null
+  const modalMatch = modal?.matchId ? matches.find((m) => m.id === modal.matchId) ?? null : null
 
   const sortedPlayers = [...players].sort((a, b) => {
     const ta = getRowTotal(a.id)
@@ -160,30 +156,60 @@ export default function ScoreSheet({
                         />
                       )
                     }
-                    const score = getCellScore(row.id, col.id)
-                    const unfinished = score !== null && isMatchUnfinished(row.id, col.id, row.tmc, col.tmc)
-                    const m = getMatch(row.id, col.id)
-                    const hasDetail = !editable && m && (m.carambolesA !== null || m.carambolesB !== null)
-                    const clickable = editable || hasDetail
-                    const { row: rowCar, col: colCar } = getCellCaramboles(row.id, col.id)
+                    const pairMatches = getMatchesForPair(row.id, col.id)
+
+                    if (pairMatches.length === 0) {
+                      return (
+                        <td
+                          key={col.id}
+                          onClick={() => editable && openModal(row, col, null)}
+                          className={`h-10 border border-black/10 text-sm font-medium tabular-nums dark:border-white/10 ${editable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                        >
+                          <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-600">·</div>
+                        </td>
+                      )
+                    }
+
                     return (
-                      <td
-                        key={col.id}
-                        onClick={() => clickable && handleCellClick(row, col)}
-                        className={`h-10 border border-black/10 text-sm font-medium tabular-nums dark:border-white/10 ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
-                      >
-                        <div className="flex h-full w-full flex-col">
-                          <div className="flex w-full justify-between px-0.5 pt-0.5">
-                            <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
-                              {rowCar !== null ? rowCar : <span className="invisible">0</span>}
-                            </span>
-                            <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
-                              {colCar !== null ? colCar : <span className="invisible">0</span>}
-                            </span>
-                          </div>
-                          <div className="flex flex-1 items-center justify-center">
-                            {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
-                          </div>
+                      <td key={col.id} className="border border-black/10 p-0 align-top dark:border-white/10">
+                        <div className="flex flex-col divide-y divide-black/10 dark:divide-white/10">
+                          {pairMatches.map((m) => {
+                            const score = scoreForRow(m, row.id)
+                            const unfinished = score !== null && isMatchUnfinished(m, row.id, row.tmc, col.tmc)
+                            const hasDetail = !editable && (m.carambolesA !== null || m.carambolesB !== null)
+                            const clickable = editable || hasDetail
+                            const rowCar = carambolesForRow(m, row.id)
+                            const colCar = carambolesForRow(m, col.id)
+                            return (
+                              <div
+                                key={m.id}
+                                onClick={() => clickable && openModal(row, col, m.id)}
+                                className={`flex h-10 w-full flex-col text-sm font-medium tabular-nums ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                              >
+                                <div className="flex w-full justify-between px-0.5 pt-0.5">
+                                  <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
+                                    {rowCar !== null ? rowCar : <span className="invisible">0</span>}
+                                  </span>
+                                  <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
+                                    {colCar !== null ? colCar : <span className="invisible">0</span>}
+                                  </span>
+                                </div>
+                                <div className="flex flex-1 items-center justify-center">
+                                  {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
+                                </div>
+                              </div>
+                            )
+                          })}
+                          {editable && (
+                            <button
+                              type="button"
+                              onClick={() => openModal(row, col, null)}
+                              title="Extra wedstrijd toevoegen"
+                              className="flex h-4 w-full items-center justify-center text-zinc-300 hover:bg-zinc-50 hover:text-zinc-500 dark:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                            >
+                              <PlusIcon />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )
@@ -230,6 +256,7 @@ export default function ScoreSheet({
               carambolesA,
               carambolesB,
               innings,
+              modal.matchId,
             )
             setMatches((prev) => {
               const exists = prev.find((m) => m.id === result.id)
@@ -475,6 +502,14 @@ function MatchDetailModal({
         </div>
       </div>
     </div>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   )
 }
 
