@@ -17,6 +17,8 @@ type MatchRecord = {
   playerBId: string
   scoreA: number | null
   scoreB: number | null
+  scoreAConfirmed: boolean
+  scoreBConfirmed: boolean
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null

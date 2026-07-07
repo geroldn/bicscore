@@ -180,6 +180,8 @@ export async function upsertMatchResult(
   carambolesCol: number | null,
   innings: number | null,
   matchId?: string | null,
+  rowConfirmed: boolean = true,
+  colConfirmed: boolean = true,
 ) {
   await assertClubAccess(clubId)
 
@@ -189,6 +191,8 @@ export async function upsertMatchResult(
     playerBId: true,
     scoreA: true,
     scoreB: true,
+    scoreAConfirmed: true,
+    scoreBConfirmed: true,
     carambolesA: true,
     carambolesB: true,
     innings: true,
@@ -213,6 +217,8 @@ export async function upsertMatchResult(
         carambolesA: carambolesRow,
         carambolesB: carambolesCol,
         innings,
+        scoreAConfirmed: rowConfirmed,
+        scoreBConfirmed: colConfirmed,
         ...scores,
       },
       select: sel,
@@ -226,6 +232,8 @@ export async function upsertMatchResult(
         carambolesA: carambolesRow,
         carambolesB: carambolesCol,
         innings,
+        scoreAConfirmed: rowConfirmed,
+        scoreBConfirmed: colConfirmed,
         ...scores,
       },
       select: sel,

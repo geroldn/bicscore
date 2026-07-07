@@ -25,7 +25,7 @@ export default async function CompetitionPage({
 
   const matches = await prisma.match.findMany({
     where: { competitionId },
-    select: { id: true, playerAId: true, playerBId: true, scoreA: true, scoreB: true, carambolesA: true, carambolesB: true, innings: true },
+    select: { id: true, playerAId: true, playerBId: true, scoreA: true, scoreB: true, scoreAConfirmed: true, scoreBConfirmed: true, carambolesA: true, carambolesB: true, innings: true },
   })
 
   const players = competition.entries.map((e) => ({

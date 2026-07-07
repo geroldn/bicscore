@@ -10,6 +10,8 @@ type MatchRecord = {
   playerBId: string
   scoreA: number | null
   scoreB: number | null
+  scoreAConfirmed: boolean
+  scoreBConfirmed: boolean
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null
@@ -53,6 +55,10 @@ export default function ScoreSheet({
     return m.playerAId === rowId ? m.carambolesA : m.carambolesB
   }
 
+  function confirmedForRow(m: MatchRecord, rowId: string): boolean {
+    return m.playerAId === rowId ? m.scoreAConfirmed : m.scoreBConfirmed
+  }
+
   function isMatchUnfinished(m: MatchRecord, rowId: string, rowTmc: number | null, colTmc: number | null): boolean {
     const rowCaramboles = carambolesForRow(m, rowId)
     const colCaramboles = m.playerAId === rowId ? m.carambolesB : m.carambolesA
@@ -60,15 +66,17 @@ export default function ScoreSheet({
     return rowCaramboles < rowTmc && colCaramboles < colTmc
   }
 
-  function getRowTotal(rowId: string): { points: number; matches: number } | null {
+  function getRowTotal(rowId: string): { points: number; matches: number; unconfirmed: boolean } | null {
     const rowTmc = players.find((p) => p.id === rowId)?.tmc ?? null
-    const scores = players
+    const included = players
       .filter((p) => p.id !== rowId)
       .flatMap((p) => getMatchesForPair(rowId, p.id).map((m) => ({ m, opponentTmc: p.tmc })))
       .filter(({ m, opponentTmc }) => !isMatchUnfinished(m, rowId, rowTmc, opponentTmc))
-      .map(({ m }) => scoreForRow(m, rowId))
-      .filter((s): s is number => s !== null)
-    return scores.length === 0 ? null : { points: scores.reduce((a, b) => a + b, 0), matches: scores.length }
+      .filter(({ m }) => scoreForRow(m, rowId) !== null)
+    if (included.length === 0) return null
+    const points = included.reduce((sum, { m }) => sum + (scoreForRow(m, rowId) as number), 0)
+    const unconfirmed = included.some(({ m }) => !confirmedForRow(m, rowId))
+    return { points, matches: included.length, unconfirmed }
   }
 
   function openModal(row: Player, col: Player, matchId: string | null) {
@@ -176,26 +184,35 @@ export default function ScoreSheet({
                           {pairMatches.map((m) => {
                             const score = scoreForRow(m, row.id)
                             const unfinished = score !== null && isMatchUnfinished(m, row.id, row.tmc, col.tmc)
+                            const unconfirmed = score !== null && !confirmedForRow(m, row.id)
                             const hasDetail = !editable && (m.carambolesA !== null || m.carambolesB !== null)
                             const clickable = editable || hasDetail
                             const rowCar = carambolesForRow(m, row.id)
                             const colCar = carambolesForRow(m, col.id)
+                            const colUnconfirmed = colCar !== null && !confirmedForRow(m, col.id)
                             return (
                               <div
                                 key={m.id}
                                 onClick={() => clickable && openModal(row, col, m.id)}
-                                className={`flex h-10 w-full flex-col text-sm font-medium tabular-nums ${unfinished ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                                className={`flex h-10 w-full flex-col text-sm font-medium tabular-nums ${unfinished || unconfirmed ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
                               >
                                 <div className="flex w-full justify-between px-0.5 pt-0.5">
-                                  <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
-                                    {rowCar !== null ? rowCar : <span className="invisible">0</span>}
+                                  <span className={`text-xs font-normal leading-none tabular-nums ${unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                                    {rowCar !== null ? <>{rowCar}{unconfirmed && "?"}</> : <span className="invisible">0</span>}
                                   </span>
-                                  <span className="text-xs font-normal leading-none tabular-nums text-zinc-700 dark:text-zinc-300">
-                                    {colCar !== null ? colCar : <span className="invisible">0</span>}
+                                  <span className={`text-xs font-normal leading-none tabular-nums ${colUnconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                                    {colCar !== null ? <>{colCar}{colUnconfirmed && "?"}</> : <span className="invisible">0</span>}
                                   </span>
                                 </div>
                                 <div className="flex flex-1 items-center justify-center">
-                                  {score !== null ? score : <span className="text-zinc-300 dark:text-zinc-600">·</span>}
+                                  {score !== null ? (
+                                    <>
+                                      {score}
+                                      {unconfirmed && "?"}
+                                    </>
+                                  ) : (
+                                    <span className="text-zinc-300 dark:text-zinc-600">·</span>
+                                  )}
                                 </div>
                               </div>
                             )
@@ -217,16 +234,16 @@ export default function ScoreSheet({
 
                   <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
                     {total !== null ? (
-                      <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        {total.points}
+                      <span className={`text-sm font-semibold ${total.unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                        {total.points}{total.unconfirmed && "?"}
                         <span className="text-xs font-normal text-zinc-700 dark:text-zinc-300">/{total.matches}</span>
                       </span>
                     ) : ""}
                   </td>
                   <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
                     {total !== null ? (
-                      <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        {(total.points / total.matches).toFixed(1)}
+                      <span className={`text-sm font-semibold ${total.unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                        {(total.points / total.matches).toFixed(1)}{total.unconfirmed && "?"}
                       </span>
                     ) : ""}
                   </td>
@@ -243,11 +260,13 @@ export default function ScoreSheet({
           colPlayer={modal.colPlayer}
           match={modalMatch}
           onClose={() => setModal(null)}
-          onSave={async (carambolesRow, carambolesCol, innings, swapped) => {
+          onSave={async (carambolesRow, carambolesCol, innings, swapped, confirmedRow, confirmedCol) => {
             const playerAId = swapped ? modal.colPlayer.id : modal.rowPlayer.id
             const playerBId = swapped ? modal.rowPlayer.id : modal.colPlayer.id
             const carambolesA = swapped ? carambolesCol : carambolesRow
             const carambolesB = swapped ? carambolesRow : carambolesCol
+            const confirmedA = swapped ? confirmedCol : confirmedRow
+            const confirmedB = swapped ? confirmedRow : confirmedCol
             const result = await upsertMatchResult(
               competitionId,
               clubId,
@@ -257,6 +276,8 @@ export default function ScoreSheet({
               carambolesB,
               innings,
               modal.matchId,
+              confirmedA,
+              confirmedB,
             )
             setMatches((prev) => {
               const exists = prev.find((m) => m.id === result.id)
@@ -292,7 +313,14 @@ function MatchModal({
   colPlayer: Player
   match: MatchRecord | null
   onClose: () => void
-  onSave: (carambolesRow: number | null, carambolesCol: number | null, innings: number | null, swapped: boolean) => Promise<void>
+  onSave: (
+    carambolesRow: number | null,
+    carambolesCol: number | null,
+    innings: number | null,
+    swapped: boolean,
+    confirmedRow: boolean,
+    confirmedCol: boolean,
+  ) => Promise<void>
 }) {
   const initCarambolesRow = match
     ? (match.playerAId === rowPlayer.id ? match.carambolesA : match.carambolesB)
@@ -300,19 +328,31 @@ function MatchModal({
   const initCarambolesCol = match
     ? (match.playerAId === rowPlayer.id ? match.carambolesB : match.carambolesA)
     : null
+  const initConfirmedRow = match
+    ? (match.playerAId === rowPlayer.id ? match.scoreAConfirmed : match.scoreBConfirmed)
+    : true
+  const initConfirmedCol = match
+    ? (match.playerAId === rowPlayer.id ? match.scoreBConfirmed : match.scoreAConfirmed)
+    : true
 
   const [carambolesRow, setCarambolesRow] = useState(initCarambolesRow?.toString() ?? "")
   const [carambolesCol, setCarambolesCol] = useState(initCarambolesCol?.toString() ?? "")
   const [innings, setInnings] = useState(match?.innings?.toString() ?? "")
+  const [confirmedRow, setConfirmedRow] = useState(initConfirmedRow)
+  const [confirmedCol, setConfirmedCol] = useState(initConfirmedCol)
   const [saving, setSaving] = useState(false)
   const [swapped, setSwapped] = useState(false)
 
   const topPlayer = swapped ? colPlayer : rowPlayer
   const topCaramboles = swapped ? carambolesCol : carambolesRow
   const setTopCaramboles = swapped ? setCarambolesCol : setCarambolesRow
+  const topConfirmed = swapped ? confirmedCol : confirmedRow
+  const setTopConfirmed = swapped ? setConfirmedCol : setConfirmedRow
   const bottomPlayer = swapped ? rowPlayer : colPlayer
   const bottomCaramboles = swapped ? carambolesRow : carambolesCol
   const setBottomCaramboles = swapped ? setCarambolesRow : setCarambolesCol
+  const bottomConfirmed = swapped ? confirmedRow : confirmedCol
+  const setBottomConfirmed = swapped ? setConfirmedRow : setConfirmedCol
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
@@ -328,7 +368,7 @@ function MatchModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings), swapped)
+    await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings), swapped, confirmedRow, confirmedCol)
     setSaving(false)
   }
 
@@ -374,6 +414,15 @@ function MatchModal({
                     />
                     {moyTop && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyTop} moyenne</span>}
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={!topConfirmed}
+                      onChange={(e) => setTopConfirmed(!e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                    />
+                    Onbevestigd
+                  </label>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -390,6 +439,15 @@ function MatchModal({
                     />
                     {moyBottom && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyBottom} moyenne</span>}
                   </div>
+                  <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={!bottomConfirmed}
+                      onChange={(e) => setBottomConfirmed(!e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                    />
+                    Onbevestigd
+                  </label>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -471,7 +529,9 @@ function MatchDetailModal({
                 <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesA / match.innings).toFixed(3)} moyenne</span>
               ) : null}
             </div>
-            <span className="text-right text-base font-bold">{match.scoreA ?? "—"} pt</span>
+            <span className={`text-right text-base font-bold ${match.scoreA !== null && !match.scoreAConfirmed ? "text-red-500 dark:text-red-400" : ""}`}>
+              {match.scoreA ?? "—"}{match.scoreA !== null && !match.scoreAConfirmed && "?"} pt
+            </span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
             <span className="text-sm font-medium">{playerB.name}</span>
@@ -481,7 +541,9 @@ function MatchDetailModal({
                 <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesB / match.innings).toFixed(3)} moyenne</span>
               ) : null}
             </div>
-            <span className="text-right text-base font-bold">{match.scoreB ?? "—"} pt</span>
+            <span className={`text-right text-base font-bold ${match.scoreB !== null && !match.scoreBConfirmed ? "text-red-500 dark:text-red-400" : ""}`}>
+              {match.scoreB ?? "—"}{match.scoreB !== null && !match.scoreBConfirmed && "?"} pt
+            </span>
           </div>
           <div className="border-t border-black/10 pt-3 dark:border-white/10">
             <div className="grid grid-cols-3 items-center gap-4">

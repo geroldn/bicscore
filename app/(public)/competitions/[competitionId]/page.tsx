@@ -35,6 +35,8 @@ export default async function PublicCompetitionPage({
       playerBId: true,
       scoreA: true,
       scoreB: true,
+      scoreAConfirmed: true,
+      scoreBConfirmed: true,
       carambolesA: true,
       carambolesB: true,
       innings: true,

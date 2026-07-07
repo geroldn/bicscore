@@ -205,6 +205,8 @@ model Match {
   playerBId     String
   scoreA        Int?
   scoreB        Int?
+  scoreAConfirmed Boolean @default(true)
+  scoreBConfirmed Boolean @default(true)
   carambolesA   Int?
   carambolesB   Int?
   moyenneA      Float?
