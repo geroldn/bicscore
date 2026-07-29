@@ -6,6 +6,7 @@ import {
   removePlayerFromCompetition,
   updateEntryTmc,
 } from "@/app/actions/competitions"
+import CompetitionHeaderBar from "@/components/competition-header-bar"
 import ScoreSheet from "@/components/score-sheet"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -29,32 +30,49 @@ type AvailablePlayer = { id: string; name: string; currentTmc: number | null }
 export default function CompetitionDetailView({
   competitionId,
   clubId,
+  competitionName,
+  clubName,
   players,
   initialMatches,
+  laggingGamesGap,
+  laggingGamesPercent,
 }: {
   competitionId: string
   clubId: string
+  competitionName: string
+  clubName: string
   players: Player[]
   initialMatches: MatchRecord[]
+  laggingGamesGap: number
+  laggingGamesPercent: number
 }) {
   const [playersOpen, setPlayersOpen] = useState(false)
+  const [showCaramboles, setShowCaramboles] = useState(false)
 
   return (
     <>
-      <div className="flex items-center gap-3">
+      <CompetitionHeaderBar
+        competitionName={competitionName}
+        clubName={clubName}
+        showCaramboles={showCaramboles}
+        onToggleCaramboles={() => setShowCaramboles((s) => !s)}
+      >
         <button
           onClick={() => setPlayersOpen(true)}
           className="rounded-md border border-black/20 px-3 py-1.5 text-sm hover:bg-zinc-50 dark:border-white/20 dark:hover:bg-zinc-800"
         >
           Spelers
         </button>
-      </div>
+      </CompetitionHeaderBar>
 
       <ScoreSheet
         competitionId={competitionId}
         clubId={clubId}
         players={players}
         initialMatches={initialMatches}
+        laggingGamesGap={laggingGamesGap}
+        laggingGamesPercent={laggingGamesPercent}
+        showCaramboles={showCaramboles}
         editable
       />
 

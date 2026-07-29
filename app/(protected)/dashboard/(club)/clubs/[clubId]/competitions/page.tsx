@@ -19,7 +19,7 @@ export default async function CompetitionsPage({
   const competitions = await prisma.competition.findMany({
     where: { clubId },
     orderBy: { name: "asc" },
-    select: { id: true, name: true, description: true, status: true },
+    select: { id: true, name: true, description: true, status: true, laggingGamesGap: true, laggingGamesPercent: true },
   })
 
   return (

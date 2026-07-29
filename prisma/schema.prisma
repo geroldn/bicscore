@@ -180,6 +180,9 @@ model Competition {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  laggingGamesGap     Int @default(3)
+  laggingGamesPercent Int @default(70)
+
   club    Club               @relation(fields: [clubId], references: [id])
   entries CompetitionEntry[]
   matches Match[]

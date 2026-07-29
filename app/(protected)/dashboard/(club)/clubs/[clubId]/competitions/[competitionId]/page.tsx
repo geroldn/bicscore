@@ -46,13 +46,15 @@ export default async function CompetitionPage({
         ]}
       />
 
-      <h1 className="text-2xl font-semibold">{competition.name}</h1>
-
       <CompetitionDetailView
         competitionId={competitionId}
         clubId={clubId}
+        competitionName={competition.name}
+        clubName={competition.club.name}
         players={players}
         initialMatches={matches}
+        laggingGamesGap={competition.laggingGamesGap}
+        laggingGamesPercent={competition.laggingGamesPercent}
       />
     </div>
   )

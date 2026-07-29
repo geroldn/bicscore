@@ -28,16 +28,33 @@ export default function ScoreSheet({
   clubId,
   players,
   initialMatches,
+  laggingGamesGap = 3,
+  laggingGamesPercent = 70,
+  showCaramboles,
   editable = false,
 }: {
   competitionId: string
   clubId: string
   players: Player[]
   initialMatches: MatchRecord[]
+  laggingGamesGap?: number
+  laggingGamesPercent?: number
+  showCaramboles: boolean
   editable?: boolean
 }) {
   const [matches, setMatches] = useState<MatchRecord[]>(initialMatches)
   const [modal, setModal] = useState<{ rowPlayer: Player; colPlayer: Player; matchId: string | null } | null>(null)
+  const [hoveredCell, setHoveredCell] = useState<{ a: string; b: string; matchId: string | null } | null>(null)
+  const cellHeightClass = showCaramboles ? "h-10" : "h-7"
+
+  function isCellHighlighted(rowId: string, colId: string, matchId: string | null): boolean {
+    if (!hoveredCell) return false
+    if (matchId !== null) return hoveredCell.matchId === matchId
+    return (
+      hoveredCell.matchId === null &&
+      ((hoveredCell.a === rowId && hoveredCell.b === colId) || (hoveredCell.a === colId && hoveredCell.b === rowId))
+    )
+  }
 
   function getMatchesForPair(rowId: string, colId: string): MatchRecord[] {
     return matches.filter(
@@ -95,7 +112,24 @@ export default function ScoreSheet({
 
   const modalMatch = modal?.matchId ? matches.find((m) => m.id === modal.matchId) ?? null : null
 
+  function gamesPlayed(playerId: string): number {
+    return getRowTotal(playerId)?.matches ?? 0
+  }
+
+  const maxGamesPlayed = players.reduce((max, p) => Math.max(max, gamesPlayed(p.id)), 0)
+
+  function isLagging(playerId: string): boolean {
+    if (maxGamesPlayed === 0) return false
+    const played = gamesPlayed(playerId)
+    return (
+      maxGamesPlayed - played >= laggingGamesGap &&
+      played < maxGamesPlayed * (laggingGamesPercent / 100)
+    )
+  }
+
   const sortedPlayers = [...players].sort((a, b) => {
+    const laggingDiff = Number(isLagging(a.id)) - Number(isLagging(b.id))
+    if (laggingDiff !== 0) return laggingDiff
     const ta = getRowTotal(a.id)
     const tb = getRowTotal(b.id)
     if (ta === null && tb === null) return 0
@@ -106,9 +140,13 @@ export default function ScoreSheet({
     return tb.matches - ta.matches
   })
 
+  function isDimmedCell(rowId: string, colId: string): boolean {
+    return isLagging(rowId) || isLagging(colId)
+  }
+
   return (
     <>
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="table-fixed border-collapse text-sm">
           <colgroup>
             <col className="w-44" />
@@ -119,20 +157,23 @@ export default function ScoreSheet({
 
           <thead>
             <tr>
-              <th className="border border-black/10 bg-zinc-50 dark:border-white/10 dark:bg-zinc-800" />
+              <th className="sticky left-0 top-0 z-20 border border-black/10 bg-zinc-50 dark:border-white/10 dark:bg-zinc-800" />
               {sortedPlayers.map((col) => (
                 <th
                   key={col.id}
-                  className="border border-black/10 bg-zinc-50 px-1 py-2 text-center text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
+                  className="sticky top-0 z-10 border border-black/10 bg-zinc-50 px-1 py-2 text-center text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
                   title={col.name}
                 >
                   <span className="block truncate">{shortName(col.name)}</span>
+                  {col.tmc !== null && (
+                    <span className="block font-normal">({col.tmc})</span>
+                  )}
                 </th>
               ))}
-              <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
+              <th className="sticky top-0 z-10 border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
                 Tot
               </th>
-              <th className="border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
+              <th className="sticky top-0 z-10 border border-black/10 bg-zinc-100 px-1 py-2 text-center text-xs font-semibold text-zinc-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-400">
                 Gem
               </th>
             </tr>
@@ -144,7 +185,7 @@ export default function ScoreSheet({
               return (
                 <tr key={row.id}>
                   <td
-                    className="border border-black/10 bg-zinc-50 py-1 pl-3 pr-4 text-right text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
+                    className="sticky left-0 z-10 border border-black/10 bg-zinc-50 py-1 pl-3 pr-4 text-right text-xs font-semibold text-zinc-600 dark:border-white/10 dark:bg-zinc-800 dark:text-zinc-400"
                     title={row.name}
                   >
                     <span className="block truncate">
@@ -160,7 +201,7 @@ export default function ScoreSheet({
                       return (
                         <td
                           key={col.id}
-                          className="h-10 border border-black/10 bg-zinc-100 dark:border-white/10 dark:bg-zinc-900"
+                          className={`${cellHeightClass} border border-black/10 dark:border-white/10 ${isDimmedCell(row.id, col.id) ? "bg-zinc-300 dark:bg-zinc-700" : "bg-zinc-100 dark:bg-zinc-900"}`}
                         />
                       )
                     }
@@ -171,7 +212,9 @@ export default function ScoreSheet({
                         <td
                           key={col.id}
                           onClick={() => editable && openModal(row, col, null)}
-                          className={`h-10 border border-black/10 text-sm font-medium tabular-nums dark:border-white/10 ${editable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                          onMouseEnter={() => editable && setHoveredCell({ a: row.id, b: col.id, matchId: null })}
+                          onMouseLeave={() => editable && setHoveredCell(null)}
+                          className={`${cellHeightClass} border border-black/10 text-sm font-medium tabular-nums dark:border-white/10 ${editable ? "cursor-pointer" : ""} ${isCellHighlighted(row.id, col.id, null) ? "bg-amber-100 dark:bg-amber-900/40" : isDimmedCell(row.id, col.id) ? "bg-zinc-200 dark:bg-zinc-700/50" : ""}`}
                         >
                           <div className="flex h-full w-full items-center justify-center text-zinc-300 dark:text-zinc-600">·</div>
                         </td>
@@ -179,7 +222,7 @@ export default function ScoreSheet({
                     }
 
                     return (
-                      <td key={col.id} className="border border-black/10 p-0 align-top dark:border-white/10">
+                      <td key={col.id} className={`border border-black/10 p-0 align-top dark:border-white/10 ${isDimmedCell(row.id, col.id) ? "bg-zinc-200 dark:bg-zinc-700/50" : ""}`}>
                         <div className="flex flex-col divide-y divide-black/10 dark:divide-white/10">
                           {pairMatches.map((m) => {
                             const score = scoreForRow(m, row.id)
@@ -194,16 +237,20 @@ export default function ScoreSheet({
                               <div
                                 key={m.id}
                                 onClick={() => clickable && openModal(row, col, m.id)}
-                                className={`flex h-10 w-full flex-col text-sm font-medium tabular-nums ${unfinished || unconfirmed ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800" : ""}`}
+                                onMouseEnter={() => clickable && setHoveredCell({ a: row.id, b: col.id, matchId: m.id })}
+                                onMouseLeave={() => clickable && setHoveredCell(null)}
+                                className={`flex ${cellHeightClass} w-full flex-col text-sm font-medium tabular-nums ${unfinished || unconfirmed ? "text-red-500 dark:text-red-400" : ""} ${clickable ? "cursor-pointer" : ""} ${isCellHighlighted(row.id, col.id, m.id) ? "bg-amber-100 dark:bg-amber-900/40" : ""}`}
                               >
-                                <div className="flex w-full justify-between px-0.5 pt-0.5">
-                                  <span className={`text-xs font-normal leading-none tabular-nums ${unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
-                                    {rowCar !== null ? <>{rowCar}{unconfirmed && "?"}</> : <span className="invisible">0</span>}
-                                  </span>
-                                  <span className={`text-xs font-normal leading-none tabular-nums ${colUnconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
-                                    {colCar !== null ? <>{colCar}{colUnconfirmed && "?"}</> : <span className="invisible">0</span>}
-                                  </span>
-                                </div>
+                                {showCaramboles && (
+                                  <div className="flex w-full justify-between px-0.5 pt-0.5">
+                                    <span className={`text-xs font-normal leading-none tabular-nums ${unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                                      {rowCar !== null ? <>{rowCar}{unconfirmed && "?"}</> : <span className="invisible">0</span>}
+                                    </span>
+                                    <span className={`text-xs font-normal leading-none tabular-nums ${colUnconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
+                                      {colCar !== null ? <>{colCar}{colUnconfirmed && "?"}</> : <span className="invisible">0</span>}
+                                    </span>
+                                  </div>
+                                )}
                                 <div className="flex flex-1 items-center justify-center">
                                   {score !== null ? (
                                     <>
@@ -232,7 +279,7 @@ export default function ScoreSheet({
                     )
                   })}
 
-                  <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
+                  <td className={`h-10 border border-black/10 px-2 text-center tabular-nums dark:border-white/10 ${isLagging(row.id) ? "bg-zinc-200 dark:bg-zinc-700" : "bg-zinc-50 dark:bg-zinc-800"}`}>
                     {total !== null ? (
                       <span className={`text-sm font-semibold ${total.unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
                         {total.points}{total.unconfirmed && "?"}
@@ -240,10 +287,10 @@ export default function ScoreSheet({
                       </span>
                     ) : ""}
                   </td>
-                  <td className="h-10 border border-black/10 bg-zinc-50 px-2 text-center tabular-nums dark:border-white/10 dark:bg-zinc-800">
+                  <td className={`h-10 border border-black/10 px-2 text-center tabular-nums dark:border-white/10 ${isLagging(row.id) ? "bg-zinc-200 dark:bg-zinc-700" : "bg-zinc-50 dark:bg-zinc-800"}`}>
                     {total !== null ? (
                       <span className={`text-sm font-semibold ${total.unconfirmed ? "text-red-500 dark:text-red-400" : "text-zinc-700 dark:text-zinc-300"}`}>
-                        {(total.points / total.matches).toFixed(1)}{total.unconfirmed && "?"}
+                        {(total.points / total.matches).toFixed(2)}{total.unconfirmed && "?"}
                       </span>
                     ) : ""}
                   </td>
@@ -522,7 +569,7 @@ function MatchDetailModal({
 
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-sm font-medium">{playerA.name}</span>
+            <span className="text-sm font-medium">{playerA.name}{playerA.tmc !== null && ` (${playerA.tmc})`}</span>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesA ?? "—"} caramboles</span>
               {match.carambolesA !== null && match.innings ? (
@@ -534,7 +581,7 @@ function MatchDetailModal({
             </span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
-            <span className="text-sm font-medium">{playerB.name}</span>
+            <span className="text-sm font-medium">{playerB.name}{playerB.tmc !== null && ` (${playerB.tmc})`}</span>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesB ?? "—"} caramboles</span>
               {match.carambolesB !== null && match.innings ? (

@@ -16,15 +16,24 @@ async function assertClubAccess(clubId: string) {
   if (!isAdmin) throw new Error("Unauthorized")
 }
 
+function parseIntOr(value: FormDataEntryValue | null, fallback: number): number {
+  const n = Number(value)
+  return value !== null && value !== "" && Number.isFinite(n) ? Math.trunc(n) : fallback
+}
+
 export async function createCompetition(clubId: string, formData: FormData) {
   await assertClubAccess(clubId)
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
+  const laggingGamesGap = parseIntOr(formData.get("laggingGamesGap"), 3)
+  const laggingGamesPercent = parseIntOr(formData.get("laggingGamesPercent"), 70)
 
   if (!name) return
 
-  await prisma.competition.create({ data: { name, description, clubId } })
+  await prisma.competition.create({
+    data: { name, description, clubId, laggingGamesGap, laggingGamesPercent },
+  })
   revalidatePath(`/dashboard/clubs/${clubId}/competitions`)
 }
 
@@ -34,12 +43,14 @@ export async function updateCompetition(competitionId: string, clubId: string, f
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
   const status = formData.get("status") as CompetitionStatus
+  const laggingGamesGap = parseIntOr(formData.get("laggingGamesGap"), 3)
+  const laggingGamesPercent = parseIntOr(formData.get("laggingGamesPercent"), 70)
 
   if (!name) return
 
   await prisma.competition.update({
     where: { id: competitionId },
-    data: { name, description, status },
+    data: { name, description, status, laggingGamesGap, laggingGamesPercent },
   })
   revalidatePath(`/dashboard/clubs/${clubId}/competitions`)
 }

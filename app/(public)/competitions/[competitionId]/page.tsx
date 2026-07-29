@@ -1,7 +1,7 @@
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import Header from "@/components/header"
-import ScoreSheet from "@/components/score-sheet"
+import PublicCompetitionView from "@/components/public-competition-view"
 import { getServerSession } from "next-auth/next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -50,7 +50,7 @@ export default async function PublicCompetitionPage({
   }))
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen flex-col">
       {session ? (
         <Header
           userName={session.user.name}
@@ -59,7 +59,7 @@ export default async function PublicCompetitionPage({
         />
       ) : (
         <header className="flex h-14 items-center justify-between bg-zinc-900 px-6 shadow-md">
-          <a href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicra</a>
+          <Link href="/" className="text-base font-bold tracking-widest text-white uppercase hover:text-zinc-300">Bicra</Link>
           <Link
             href="/login"
             className="rounded-md bg-zinc-700 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-600"
@@ -76,21 +76,15 @@ export default async function PublicCompetitionPage({
           </Link>
         </div>
 
-        <div>
-          <h1 className="text-2xl font-semibold">{competition.name}</h1>
-          <p className="mt-1 text-sm text-zinc-500">{competition.club.name}</p>
-        </div>
-
-        {players.length === 0 ? (
-          <p className="text-sm text-zinc-500">Nog geen spelers ingeschreven voor deze competitie.</p>
-        ) : (
-          <ScoreSheet
-            competitionId={competitionId}
-            clubId=""
-            players={players}
-            initialMatches={matches}
-          />
-        )}
+        <PublicCompetitionView
+          competitionId={competitionId}
+          competitionName={competition.name}
+          clubName={competition.club.name}
+          players={players}
+          initialMatches={matches}
+          laggingGamesGap={competition.laggingGamesGap}
+          laggingGamesPercent={competition.laggingGamesPercent}
+        />
       </main>
     </div>
   )

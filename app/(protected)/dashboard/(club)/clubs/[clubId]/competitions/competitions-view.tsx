@@ -10,7 +10,14 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 type Club = { id: string; name: string }
-type Competition = { id: string; name: string; description: string | null; status: string }
+type Competition = {
+  id: string
+  name: string
+  description: string | null
+  status: string
+  laggingGamesGap: number
+  laggingGamesPercent: number
+}
 
 export default function CompetitionsView({
   club,
@@ -186,6 +193,37 @@ function CompetitionModal({
               className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
             />
           </div>
+
+          <div className="flex gap-4">
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="laggingGamesGap" className="text-sm font-medium">Achterstand: aantal wedstrijden</label>
+              <input
+                id="laggingGamesGap"
+                name="laggingGamesGap"
+                type="number"
+                min={0}
+                step={1}
+                defaultValue={competition?.laggingGamesGap ?? 3}
+                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <label htmlFor="laggingGamesPercent" className="text-sm font-medium">Achterstand: percentage</label>
+              <input
+                id="laggingGamesPercent"
+                name="laggingGamesPercent"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                defaultValue={competition?.laggingGamesPercent ?? 70}
+                className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+              />
+            </div>
+          </div>
+          <p className="-mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+            Een speler wordt onderaan het scoreformulier geplaatst als die zowel minstens dit aantal wedstrijden áchterloopt op de koploper, als minder dan dit percentage van diens aantal wedstrijden heeft gespeeld.
+          </p>
 
           {competition && (
             <div className="flex flex-col gap-1">
