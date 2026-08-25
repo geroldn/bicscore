@@ -24,6 +24,7 @@ type MatchRecord = {
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null
+  awardedScore: boolean
   playedAt: Date | null
 }
 type Entry = { id: string; tmc: number | null; excluded: boolean; player: { id: string; name: string } }
