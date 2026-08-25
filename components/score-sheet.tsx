@@ -15,12 +15,21 @@ type MatchRecord = {
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null
+  awardedScore: boolean
+  playedAt: Date | null
 }
 
 function shortName(name: string) {
   const parts = name.trim().split(/\s+/)
   if (parts.length === 1) return parts[0]
   return `${parts[0]} ${parts[parts.length - 1][0]}.`
+}
+
+function toDateInputValue(d: Date): string {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const dd = String(d.getDate()).padStart(2, "0")
+  return `${yyyy}-${mm}-${dd}`
 }
 
 export default function ScoreSheet({
@@ -102,7 +111,7 @@ export default function ScoreSheet({
       return
     }
     const m = matches.find((x) => x.id === matchId)
-    if (!editable && (!m || (m.carambolesA === null && m.carambolesB === null))) return
+    if (!editable && (!m || (m.carambolesA === null && m.carambolesB === null && !m.awardedScore))) return
     if (m && m.playerAId === col.id) {
       setModal({ rowPlayer: col, colPlayer: row, matchId })
     } else {
@@ -228,7 +237,7 @@ export default function ScoreSheet({
                             const score = scoreForRow(m, row.id)
                             const unfinished = score !== null && isMatchUnfinished(m, row.id, row.tmc, col.tmc)
                             const unconfirmed = score !== null && !confirmedForRow(m, row.id)
-                            const hasDetail = !editable && (m.carambolesA !== null || m.carambolesB !== null)
+                            const hasDetail = !editable && (m.carambolesA !== null || m.carambolesB !== null || m.awardedScore)
                             const clickable = editable || hasDetail
                             const rowCar = carambolesForRow(m, row.id)
                             const colCar = carambolesForRow(m, col.id)
@@ -307,13 +316,15 @@ export default function ScoreSheet({
           colPlayer={modal.colPlayer}
           match={modalMatch}
           onClose={() => setModal(null)}
-          onSave={async (carambolesRow, carambolesCol, innings, swapped, confirmedRow, confirmedCol) => {
+          onSave={async (carambolesRow, carambolesCol, innings, swapped, confirmedRow, confirmedCol, playedAt, awardedScore, pointsRow, pointsCol) => {
             const playerAId = swapped ? modal.colPlayer.id : modal.rowPlayer.id
             const playerBId = swapped ? modal.rowPlayer.id : modal.colPlayer.id
             const carambolesA = swapped ? carambolesCol : carambolesRow
             const carambolesB = swapped ? carambolesRow : carambolesCol
             const confirmedA = swapped ? confirmedCol : confirmedRow
             const confirmedB = swapped ? confirmedRow : confirmedCol
+            const pointsA = swapped ? pointsCol : pointsRow
+            const pointsB = swapped ? pointsRow : pointsCol
             const result = await upsertMatchResult(
               competitionId,
               clubId,
@@ -325,6 +336,10 @@ export default function ScoreSheet({
               modal.matchId,
               confirmedA,
               confirmedB,
+              playedAt ? new Date(playedAt) : null,
+              awardedScore,
+              pointsA,
+              pointsB,
             )
             setMatches((prev) => {
               const exists = prev.find((m) => m.id === result.id)
@@ -367,6 +382,10 @@ function MatchModal({
     swapped: boolean,
     confirmedRow: boolean,
     confirmedCol: boolean,
+    playedAt: string,
+    awardedScore: boolean,
+    pointsRow: number | null,
+    pointsCol: number | null,
   ) => Promise<void>
 }) {
   const initCarambolesRow = match
@@ -374,6 +393,12 @@ function MatchModal({
     : null
   const initCarambolesCol = match
     ? (match.playerAId === rowPlayer.id ? match.carambolesB : match.carambolesA)
+    : null
+  const initScoreRow = match
+    ? (match.playerAId === rowPlayer.id ? match.scoreA : match.scoreB)
+    : null
+  const initScoreCol = match
+    ? (match.playerAId === rowPlayer.id ? match.scoreB : match.scoreA)
     : null
   const initConfirmedRow = match
     ? (match.playerAId === rowPlayer.id ? match.scoreAConfirmed : match.scoreBConfirmed)
@@ -384,7 +409,11 @@ function MatchModal({
 
   const [carambolesRow, setCarambolesRow] = useState(initCarambolesRow?.toString() ?? "")
   const [carambolesCol, setCarambolesCol] = useState(initCarambolesCol?.toString() ?? "")
+  const [pointsRow, setPointsRow] = useState(initScoreRow?.toString() ?? "")
+  const [pointsCol, setPointsCol] = useState(initScoreCol?.toString() ?? "")
+  const [awardedScore, setAwardedScore] = useState(match?.awardedScore ?? false)
   const [innings, setInnings] = useState(match?.innings?.toString() ?? "")
+  const [playedAt, setPlayedAt] = useState(toDateInputValue(match?.playedAt ?? new Date()))
   const [confirmedRow, setConfirmedRow] = useState(initConfirmedRow)
   const [confirmedCol, setConfirmedCol] = useState(initConfirmedCol)
   const [saving, setSaving] = useState(false)
@@ -393,11 +422,15 @@ function MatchModal({
   const topPlayer = swapped ? colPlayer : rowPlayer
   const topCaramboles = swapped ? carambolesCol : carambolesRow
   const setTopCaramboles = swapped ? setCarambolesCol : setCarambolesRow
+  const topPoints = swapped ? pointsCol : pointsRow
+  const setTopPoints = swapped ? setPointsCol : setPointsRow
   const topConfirmed = swapped ? confirmedCol : confirmedRow
   const setTopConfirmed = swapped ? setConfirmedCol : setConfirmedRow
   const bottomPlayer = swapped ? rowPlayer : colPlayer
   const bottomCaramboles = swapped ? carambolesRow : carambolesCol
   const setBottomCaramboles = swapped ? setCarambolesRow : setCarambolesCol
+  const bottomPoints = swapped ? pointsRow : pointsCol
+  const setBottomPoints = swapped ? setPointsRow : setPointsCol
   const bottomConfirmed = swapped ? confirmedRow : confirmedCol
   const setBottomConfirmed = swapped ? setConfirmedRow : setConfirmedCol
 
@@ -415,7 +448,18 @@ function MatchModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await onSave(parseOrNull(carambolesRow), parseOrNull(carambolesCol), parseOrNull(innings), swapped, confirmedRow, confirmedCol)
+    await onSave(
+      parseOrNull(carambolesRow),
+      parseOrNull(carambolesCol),
+      parseOrNull(innings),
+      swapped,
+      confirmedRow,
+      confirmedCol,
+      playedAt,
+      awardedScore,
+      parseOrNull(pointsRow),
+      parseOrNull(pointsCol),
+    )
     setSaving(false)
   }
 
@@ -440,73 +484,151 @@ function MatchModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              checked={awardedScore}
+              onChange={(e) => setAwardedScore(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+            />
+            Arbitrale score
+          </label>
+
           {(() => {
             const inn = parseInt(innings, 10)
             const moyTop = inn > 0 && topCaramboles !== "" ? (parseInt(topCaramboles, 10) / inn).toFixed(3) : null
             const moyBottom = inn > 0 && bottomCaramboles !== "" ? (parseInt(bottomCaramboles, 10) / inn).toFixed(3) : null
             return (
               <>
-                <div className="flex items-center gap-4">
-                  <span className="w-40 text-sm font-medium">{topPlayer.name}{topPlayer.tmc !== null && ` (${topPlayer.tmc})`}</span>
-                  <div className="flex flex-1 flex-col gap-1">
-                    <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={topCaramboles}
-                      onChange={(e) => setTopCaramboles(e.target.value)}
-                      autoFocus
-                      className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-                    />
-                    {moyTop && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyTop} moyenne</span>}
-                  </div>
-                  <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <input
-                      type="checkbox"
-                      checked={!topConfirmed}
-                      onChange={(e) => setTopConfirmed(!e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
-                    />
-                    Onbevestigd
-                  </label>
-                </div>
+                {awardedScore ? (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <span className="w-40 text-sm font-medium">{topPlayer.name}{topPlayer.tmc !== null && ` (${topPlayer.tmc})`}</span>
+                      <div className="flex flex-1 flex-col gap-1">
+                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Wedstrijdpunten</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={topPoints}
+                          onChange={(e) => setTopPoints(e.target.value)}
+                          autoFocus
+                          className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                        />
+                      </div>
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={!topConfirmed}
+                          onChange={(e) => setTopConfirmed(!e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                        />
+                        Onbevestigd
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="w-40 text-sm font-medium">{bottomPlayer.name}{bottomPlayer.tmc !== null && ` (${bottomPlayer.tmc})`}</span>
+                      <div className="flex flex-1 flex-col gap-1">
+                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Wedstrijdpunten</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={bottomPoints}
+                          onChange={(e) => setBottomPoints(e.target.value)}
+                          className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                        />
+                      </div>
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={!bottomConfirmed}
+                          onChange={(e) => setBottomConfirmed(!e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                        />
+                        Onbevestigd
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <span className="w-40 text-sm font-medium">{topPlayer.name}{topPlayer.tmc !== null && ` (${topPlayer.tmc})`}</span>
+                      <div className="flex flex-1 flex-col gap-1">
+                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={topCaramboles}
+                          onChange={(e) => setTopCaramboles(e.target.value)}
+                          autoFocus
+                          className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                        />
+                        {moyTop && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyTop} moyenne</span>}
+                      </div>
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={!topConfirmed}
+                          onChange={(e) => setTopConfirmed(!e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                        />
+                        Onbevestigd
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="w-40 text-sm font-medium">{bottomPlayer.name}{bottomPlayer.tmc !== null && ` (${bottomPlayer.tmc})`}</span>
+                      <div className="flex flex-1 flex-col gap-1">
+                        <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={bottomCaramboles}
+                          onChange={(e) => setBottomCaramboles(e.target.value)}
+                          className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                        />
+                        {moyBottom && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyBottom} moyenne</span>}
+                      </div>
+                      <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <input
+                          type="checkbox"
+                          checked={!bottomConfirmed}
+                          onChange={(e) => setBottomConfirmed(!e.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
+                        />
+                        Onbevestigd
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="w-40 text-sm font-medium">Beurten</span>
+                      <div className="flex flex-1 flex-col gap-1">
+                        <label className="text-xs text-zinc-500 dark:text-zinc-400">&nbsp;</label>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={innings}
+                          onChange={(e) => setInnings(e.target.value)}
+                          className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex items-center gap-4">
-                  <span className="w-40 text-sm font-medium">{bottomPlayer.name}{bottomPlayer.tmc !== null && ` (${bottomPlayer.tmc})`}</span>
-                  <div className="flex flex-1 flex-col gap-1">
-                    <label className="text-xs text-zinc-500 dark:text-zinc-400">Caramboles</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={bottomCaramboles}
-                      onChange={(e) => setBottomCaramboles(e.target.value)}
-                      className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
-                    />
-                    {moyBottom && <span className="text-xs text-zinc-400 dark:text-zinc-500">{moyBottom} moyenne</span>}
-                  </div>
-                  <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <input
-                      type="checkbox"
-                      checked={!bottomConfirmed}
-                      onChange={(e) => setBottomConfirmed(!e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-black/20 dark:border-white/20"
-                    />
-                    Onbevestigd
-                  </label>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <span className="w-40 text-sm font-medium">Beurten</span>
+                  <span className="w-40 text-sm font-medium">Datum</span>
                   <div className="flex flex-1 flex-col gap-1">
                     <label className="text-xs text-zinc-500 dark:text-zinc-400">&nbsp;</label>
                     <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={innings}
-                      onChange={(e) => setInnings(e.target.value)}
+                      type="date"
+                      value={playedAt}
+                      onChange={(e) => setPlayedAt(e.target.value)}
                       className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
                     />
                   </div>
@@ -563,42 +685,55 @@ function MatchDetailModal({
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl dark:bg-zinc-900">
-        <h2 className="mb-6 text-lg font-semibold">
+        <h2 className="mb-1 text-lg font-semibold">
           {playerA.name} — {playerB.name}
         </h2>
+        {match.awardedScore && (
+          <p className="mb-5 text-xs text-zinc-400 dark:text-zinc-500">Arbitrale score</p>
+        )}
 
-        <div className="flex flex-col gap-4">
+        <div className={`flex flex-col gap-4 ${match.awardedScore ? "mt-5" : ""}`}>
           <div className="grid grid-cols-3 items-center gap-4">
             <span className="text-sm font-medium">{playerA.name}{playerA.tmc !== null && ` (${playerA.tmc})`}</span>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesA ?? "—"} caramboles</span>
-              {match.carambolesA !== null && match.innings ? (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesA / match.innings).toFixed(3)} moyenne</span>
-              ) : null}
-            </div>
+            {match.awardedScore ? (
+              <span />
+            ) : (
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesA ?? "—"} caramboles</span>
+                {match.carambolesA !== null && match.innings ? (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesA / match.innings).toFixed(3)} moyenne</span>
+                ) : null}
+              </div>
+            )}
             <span className={`text-right text-base font-bold ${match.scoreA !== null && !match.scoreAConfirmed ? "text-red-500 dark:text-red-400" : ""}`}>
               {match.scoreA ?? "—"}{match.scoreA !== null && !match.scoreAConfirmed && "?"} pt
             </span>
           </div>
           <div className="grid grid-cols-3 items-center gap-4">
             <span className="text-sm font-medium">{playerB.name}{playerB.tmc !== null && ` (${playerB.tmc})`}</span>
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesB ?? "—"} caramboles</span>
-              {match.carambolesB !== null && match.innings ? (
-                <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesB / match.innings).toFixed(3)} moyenne</span>
-              ) : null}
-            </div>
+            {match.awardedScore ? (
+              <span />
+            ) : (
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.carambolesB ?? "—"} caramboles</span>
+                {match.carambolesB !== null && match.innings ? (
+                  <span className="text-xs text-zinc-400 dark:text-zinc-500">{(match.carambolesB / match.innings).toFixed(3)} moyenne</span>
+                ) : null}
+              </div>
+            )}
             <span className={`text-right text-base font-bold ${match.scoreB !== null && !match.scoreBConfirmed ? "text-red-500 dark:text-red-400" : ""}`}>
               {match.scoreB ?? "—"}{match.scoreB !== null && !match.scoreBConfirmed && "?"} pt
             </span>
           </div>
-          <div className="border-t border-black/10 pt-3 dark:border-white/10">
-            <div className="grid grid-cols-3 items-center gap-4">
-              <span className="text-sm text-zinc-500 dark:text-zinc-400">Beurten</span>
-              <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.innings ?? "—"} beurten</span>
-              <span />
+          {!match.awardedScore && (
+            <div className="border-t border-black/10 pt-3 dark:border-white/10">
+              <div className="grid grid-cols-3 items-center gap-4">
+                <span className="text-sm text-zinc-500 dark:text-zinc-400">Beurten</span>
+                <span className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{match.innings ?? "—"} beurten</span>
+                <span />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end">

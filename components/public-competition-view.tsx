@@ -16,6 +16,8 @@ type MatchRecord = {
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null
+  awardedScore: boolean
+  playedAt: Date | null
 }
 
 export default function PublicCompetitionView({

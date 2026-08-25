@@ -4,6 +4,7 @@ import {
   addPlayerToCompetition,
   getCompetitionPlayers,
   removePlayerFromCompetition,
+  updateEntryExcluded,
   updateEntryTmc,
 } from "@/app/actions/competitions"
 import CompetitionHeaderBar from "@/components/competition-header-bar"
@@ -23,8 +24,9 @@ type MatchRecord = {
   carambolesA: number | null
   carambolesB: number | null
   innings: number | null
+  playedAt: Date | null
 }
-type Entry = { id: string; tmc: number | null; player: { id: string; name: string } }
+type Entry = { id: string; tmc: number | null; excluded: boolean; player: { id: string; name: string } }
 type AvailablePlayer = { id: string; name: string; currentTmc: number | null }
 
 export default function CompetitionDetailView({
@@ -146,6 +148,12 @@ function PlayersModal({
     setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, tmc } : e)))
     setEditingEntryId(null)
     setActionPending(false)
+    router.refresh()
+  }
+
+  async function handleToggleExcluded(entryId: string, excluded: boolean) {
+    setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, excluded } : e)))
+    await updateEntryExcluded(entryId, excluded)
     router.refresh()
   }
 
@@ -296,6 +304,18 @@ function PlayersModal({
                         </button>
                       </>
                     )}
+                    <label
+                      className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400"
+                      title="Uitsluiten van de competitie"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={entry.excluded}
+                        onChange={(e) => handleToggleExcluded(entry.id, e.target.checked)}
+                        disabled={actionPending}
+                      />
+                      Uitsluiten
+                    </label>
                   </div>
                 ))
               )}

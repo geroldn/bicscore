@@ -64,6 +64,7 @@ export async function getCompetitionPlayers(competitionId: string, clubId: strin
       select: {
         id: true,
         tmc: true,
+        excluded: true,
         player: { select: { id: true, name: true } },
       },
       orderBy: { player: { name: "asc" } },
@@ -109,6 +110,7 @@ export async function addPlayerToCompetition(
     select: {
       id: true,
       tmc: true,
+      excluded: true,
       player: { select: { id: true, name: true } },
     },
   })
@@ -133,10 +135,11 @@ export async function updateEntryTmc(entryId: string, tmc: number | null) {
       competitionId: entry.competitionId,
       OR: [{ playerAId: entry.playerId }, { playerBId: entry.playerId }],
     },
-    select: { id: true, playerAId: true, playerBId: true, carambolesA: true, carambolesB: true },
+    select: { id: true, playerAId: true, playerBId: true, carambolesA: true, carambolesB: true, awardedScore: true },
   })
 
   for (const match of matches) {
+    if (match.awardedScore) continue
     const otherPlayerId = match.playerAId === entry.playerId ? match.playerBId : match.playerAId
     const otherEntry = await prisma.competitionEntry.findFirst({
       where: { competitionId: entry.competitionId, playerId: otherPlayerId },
@@ -150,6 +153,17 @@ export async function updateEntryTmc(entryId: string, tmc: number | null) {
       data: calcScores(match.carambolesA, match.carambolesB, tmcA, tmcB),
     })
   }
+}
+
+export async function updateEntryExcluded(entryId: string, excluded: boolean) {
+  const entry = await prisma.competitionEntry.findUnique({
+    where: { id: entryId },
+    select: { competition: { select: { clubId: true } } },
+  })
+  if (!entry) throw new Error("Entry not found")
+  await assertClubAccess(entry.competition.clubId)
+
+  await prisma.competitionEntry.update({ where: { id: entryId }, data: { excluded } })
 }
 
 export async function removePlayerFromCompetition(entryId: string) {
@@ -193,6 +207,10 @@ export async function upsertMatchResult(
   matchId?: string | null,
   rowConfirmed: boolean = true,
   colConfirmed: boolean = true,
+  playedAt?: Date | null,
+  awardedScore: boolean = false,
+  matchPointsRow?: number | null,
+  matchPointsCol?: number | null,
 ) {
   await assertClubAccess(clubId)
 
@@ -207,46 +225,45 @@ export async function upsertMatchResult(
     carambolesA: true,
     carambolesB: true,
     innings: true,
+    awardedScore: true,
+    playedAt: true,
   } as const
 
-  const tmcEntries = await prisma.competitionEntry.findMany({
-    where: { competitionId, playerId: { in: [rowPlayerId, colPlayerId] } },
-    select: { playerId: true, tmc: true },
-  })
+  let scores: { scoreA: number | null; scoreB: number | null }
+  if (awardedScore) {
+    scores = { scoreA: matchPointsRow ?? null, scoreB: matchPointsCol ?? null }
+  } else {
+    const tmcEntries = await prisma.competitionEntry.findMany({
+      where: { competitionId, playerId: { in: [rowPlayerId, colPlayerId] } },
+      select: { playerId: true, tmc: true },
+    })
+    const tmcRow = tmcEntries.find((e) => e.playerId === rowPlayerId)?.tmc ?? null
+    const tmcCol = tmcEntries.find((e) => e.playerId === colPlayerId)?.tmc ?? null
+    scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
+  }
 
-  const tmcRow = tmcEntries.find((e) => e.playerId === rowPlayerId)?.tmc ?? null
-  const tmcCol = tmcEntries.find((e) => e.playerId === colPlayerId)?.tmc ?? null
+  const data = {
+    playerAId: rowPlayerId,
+    playerBId: colPlayerId,
+    carambolesA: awardedScore ? null : carambolesRow,
+    carambolesB: awardedScore ? null : carambolesCol,
+    innings: awardedScore ? null : innings,
+    awardedScore,
+    scoreAConfirmed: rowConfirmed,
+    scoreBConfirmed: colConfirmed,
+    ...scores,
+  }
 
-  const scores = calcScores(carambolesRow, carambolesCol, tmcRow, tmcCol)
   let result
   if (matchId) {
     result = await prisma.match.update({
       where: { id: matchId },
-      data: {
-        playerAId: rowPlayerId,
-        playerBId: colPlayerId,
-        carambolesA: carambolesRow,
-        carambolesB: carambolesCol,
-        innings,
-        scoreAConfirmed: rowConfirmed,
-        scoreBConfirmed: colConfirmed,
-        ...scores,
-      },
+      data: { ...data, playedAt: playedAt ?? undefined },
       select: sel,
     })
   } else {
     result = await prisma.match.create({
-      data: {
-        competitionId,
-        playerAId: rowPlayerId,
-        playerBId: colPlayerId,
-        carambolesA: carambolesRow,
-        carambolesB: carambolesCol,
-        innings,
-        scoreAConfirmed: rowConfirmed,
-        scoreBConfirmed: colConfirmed,
-        ...scores,
-      },
+      data: { ...data, competitionId, playedAt: playedAt ?? new Date() },
       select: sel,
     })
   }

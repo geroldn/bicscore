@@ -40,14 +40,18 @@ export default async function PublicCompetitionPage({
       carambolesA: true,
       carambolesB: true,
       innings: true,
+      awardedScore: true,
+      playedAt: true,
     },
   })
 
-  const players = competition.entries.map((e) => ({
-    id: e.player.id,
-    name: e.player.name,
-    tmc: e.tmc,
-  }))
+  const players = competition.entries
+    .filter((e) => !e.excluded)
+    .map((e) => ({
+      id: e.player.id,
+      name: e.player.name,
+      tmc: e.tmc,
+    }))
 
   return (
     <div className="flex min-h-screen flex-col">

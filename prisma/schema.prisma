@@ -193,6 +193,7 @@ model CompetitionEntry {
   competitionId String
   playerId      String
   tmc           Int?
+  excluded      Boolean  @default(false)
   registeredAt  DateTime @default(now())
 
   competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
@@ -215,6 +216,7 @@ model Match {
   moyenneA      Float?
   moyenneB      Float?
   innings       Int?
+  awardedScore  Boolean   @default(false)
   playedAt      DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

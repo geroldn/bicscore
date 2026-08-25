@@ -25,14 +25,16 @@ export default async function CompetitionPage({
 
   const matches = await prisma.match.findMany({
     where: { competitionId },
-    select: { id: true, playerAId: true, playerBId: true, scoreA: true, scoreB: true, scoreAConfirmed: true, scoreBConfirmed: true, carambolesA: true, carambolesB: true, innings: true },
+    select: { id: true, playerAId: true, playerBId: true, scoreA: true, scoreB: true, scoreAConfirmed: true, scoreBConfirmed: true, carambolesA: true, carambolesB: true, innings: true, awardedScore: true, playedAt: true },
   })
 
-  const players = competition.entries.map((e) => ({
-    id: e.player.id,
-    name: e.player.name,
-    tmc: e.tmc,
-  }))
+  const players = competition.entries
+    .filter((e) => !e.excluded)
+    .map((e) => ({
+      id: e.player.id,
+      name: e.player.name,
+      tmc: e.tmc,
+    }))
 
   return (
     <div className="flex flex-col gap-6 p-8">
