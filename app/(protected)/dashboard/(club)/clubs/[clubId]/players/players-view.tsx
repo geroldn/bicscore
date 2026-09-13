@@ -147,12 +147,12 @@ function PlayerModal({
             />
           </div>
 
-          {player && seasons.length > 0 && (
+          {seasons.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">TMC per seizoen</span>
               <div className="flex flex-col gap-2 rounded-md border border-black/10 p-3 dark:border-white/10">
                 {seasons.map((season) => {
-                  const existing = player.tmcHistory.find((h) => h.seasonId === season.id)
+                  const existing = player?.tmcHistory.find((h) => h.seasonId === season.id)
                   return (
                     <div key={season.id} className="flex items-center gap-3">
                       <label

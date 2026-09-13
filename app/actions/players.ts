@@ -21,7 +21,7 @@ export async function createPlayer(clubId: string, formData: FormData) {
 
   if (!name) return
 
-  await prisma.player.create({
+  const player = await prisma.player.create({
     data: {
       name,
       clubMemberships: {
@@ -29,6 +29,17 @@ export async function createPlayer(clubId: string, formData: FormData) {
       },
     },
   })
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("tmc_")) continue
+    const seasonId = key.slice(4)
+    const tmc = (value as string).trim() ? parseInt(value as string) : null
+    if (tmc !== null) {
+      await prisma.playerTmc.create({
+        data: { playerId: player.id, seasonId, tmc },
+      })
+    }
+  }
 
   revalidatePath(`/dashboard/clubs/${clubId}/players`)
 }
