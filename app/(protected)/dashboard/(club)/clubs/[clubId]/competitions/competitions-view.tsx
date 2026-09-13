@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 type Club = { id: string; name: string }
+type Season = { id: string; name: string }
 type Competition = {
   id: string
   name: string
@@ -17,14 +18,17 @@ type Competition = {
   status: string
   laggingGamesGap: number
   laggingGamesPercent: number
+  seasonId: string | null
 }
 
 export default function CompetitionsView({
   club,
   competitions,
+  seasons,
 }: {
   club: Club
   competitions: Competition[]
+  seasons: Season[]
 }) {
   const [editing, setEditing] = useState<Competition | null>(null)
   const [open, setOpen] = useState(false)
@@ -97,7 +101,7 @@ export default function CompetitionsView({
         </div>
       )}
 
-      {open && <CompetitionModal club={club} competition={editing} onClose={close} />}
+      {open && <CompetitionModal club={club} competition={editing} seasons={seasons} onClose={close} />}
     </>
   )
 }
@@ -127,10 +131,12 @@ function StatusBadge({ status }: { status: string }) {
 function CompetitionModal({
   club,
   competition,
+  seasons,
   onClose,
 }: {
   club: Club
   competition: Competition | null
+  seasons: Season[]
   onClose: () => void
 }) {
   const router = useRouter()
@@ -192,6 +198,24 @@ function CompetitionModal({
               defaultValue={competition?.description ?? ""}
               className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
             />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="seasonId" className="text-sm font-medium">Seizoen</label>
+            <select
+              id="seasonId"
+              name="seasonId"
+              defaultValue={competition?.seasonId ?? ""}
+              className="rounded-md border border-black/20 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black dark:border-white/20 dark:bg-zinc-800 dark:focus:ring-white"
+            >
+              <option value="">Geen seizoen</option>
+              {seasons.map((season) => (
+                <option key={season.id} value={season.id}>{season.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500">
+              Bepaalt welke TMC van een speler wordt voorgesteld bij het toevoegen aan deze competitie.
+            </p>
           </div>
 
           <div className="flex gap-4">

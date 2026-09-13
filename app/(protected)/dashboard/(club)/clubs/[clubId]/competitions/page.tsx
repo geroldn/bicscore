@@ -16,15 +16,29 @@ export default async function CompetitionsPage({
 
   if (!club) notFound()
 
-  const competitions = await prisma.competition.findMany({
-    where: { clubId },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, description: true, status: true, laggingGamesGap: true, laggingGamesPercent: true },
-  })
+  const [competitions, seasons] = await Promise.all([
+    prisma.competition.findMany({
+      where: { clubId },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        status: true,
+        laggingGamesGap: true,
+        laggingGamesPercent: true,
+        seasonId: true,
+      },
+    }),
+    prisma.season.findMany({
+      orderBy: { startDate: "desc" },
+      select: { id: true, name: true },
+    }),
+  ])
 
   return (
     <div className="flex flex-col gap-6 p-8">
-      <CompetitionsView club={club} competitions={competitions} />
+      <CompetitionsView club={club} competitions={competitions} seasons={seasons} />
     </div>
   )
 }

@@ -26,13 +26,14 @@ export async function createCompetition(clubId: string, formData: FormData) {
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
+  const seasonId = (formData.get("seasonId") as string | null)?.trim() || null
   const laggingGamesGap = parseIntOr(formData.get("laggingGamesGap"), 3)
   const laggingGamesPercent = parseIntOr(formData.get("laggingGamesPercent"), 70)
 
   if (!name) return
 
   await prisma.competition.create({
-    data: { name, description, clubId, laggingGamesGap, laggingGamesPercent },
+    data: { name, description, clubId, seasonId, laggingGamesGap, laggingGamesPercent },
   })
   revalidatePath(`/dashboard/clubs/${clubId}/competitions`)
 }
@@ -42,6 +43,7 @@ export async function updateCompetition(competitionId: string, clubId: string, f
 
   const name = (formData.get("name") as string).trim()
   const description = (formData.get("description") as string | null)?.trim() || null
+  const seasonId = (formData.get("seasonId") as string | null)?.trim() || null
   const status = formData.get("status") as CompetitionStatus
   const laggingGamesGap = parseIntOr(formData.get("laggingGamesGap"), 3)
   const laggingGamesPercent = parseIntOr(formData.get("laggingGamesPercent"), 70)
@@ -50,7 +52,7 @@ export async function updateCompetition(competitionId: string, clubId: string, f
 
   await prisma.competition.update({
     where: { id: competitionId },
-    data: { name, description, status, laggingGamesGap, laggingGamesPercent },
+    data: { name, description, seasonId, status, laggingGamesGap, laggingGamesPercent },
   })
   revalidatePath(`/dashboard/clubs/${clubId}/competitions`)
 }
@@ -58,7 +60,8 @@ export async function updateCompetition(competitionId: string, clubId: string, f
 export async function getCompetitionPlayers(competitionId: string, clubId: string) {
   await assertClubAccess(clubId)
 
-  const [entries, memberships] = await Promise.all([
+  const [competition, entries, memberships] = await Promise.all([
+    prisma.competition.findUnique({ where: { id: competitionId }, select: { seasonId: true } }),
     prisma.competitionEntry.findMany({
       where: { competitionId },
       select: {
@@ -78,8 +81,7 @@ export async function getCompetitionPlayers(competitionId: string, clubId: strin
             name: true,
             tmcHistory: {
               orderBy: { season: { startDate: "desc" } },
-              take: 1,
-              select: { tmc: true },
+              select: { tmc: true, seasonId: true },
             },
           },
         },
@@ -88,9 +90,16 @@ export async function getCompetitionPlayers(competitionId: string, clubId: strin
     }),
   ])
 
+  const seasonId = competition?.seasonId ?? null
+
   const inCompetition = new Set(entries.map((e) => e.player.id))
   const available = memberships
-    .map((m) => ({ ...m.player, currentTmc: m.player.tmcHistory[0]?.tmc ?? null }))
+    .map((m) => {
+      const tmcForSeason = seasonId
+        ? m.player.tmcHistory.find((h) => h.seasonId === seasonId)?.tmc ?? null
+        : m.player.tmcHistory[0]?.tmc ?? null
+      return { ...m.player, currentTmc: tmcForSeason }
+    })
     .filter((p) => !inCompetition.has(p.id))
 
   return { entries, available }

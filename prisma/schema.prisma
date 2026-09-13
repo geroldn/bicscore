@@ -128,7 +128,8 @@ model Season {
   startDate DateTime
   createdAt DateTime @default(now())
 
-  tmcHistory PlayerTmc[]
+  tmcHistory   PlayerTmc[]
+  competitions Competition[]
 }
 
 model PlayerTmc {
@@ -177,6 +178,7 @@ model Competition {
   startDate   DateTime?
   endDate     DateTime?
   clubId      String
+  seasonId    String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
@@ -184,6 +186,7 @@ model Competition {
   laggingGamesPercent Int @default(70)
 
   club    Club               @relation(fields: [clubId], references: [id])
+  season  Season?            @relation(fields: [seasonId], references: [id])
   entries CompetitionEntry[]
   matches Match[]
 }
