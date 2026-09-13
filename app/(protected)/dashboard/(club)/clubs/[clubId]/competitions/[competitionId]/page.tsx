@@ -14,6 +14,7 @@ export default async function CompetitionPage({
     where: { id: competitionId },
     include: {
       club: { select: { id: true, name: true } },
+      season: { select: { name: true } },
       entries: {
         include: { player: { select: { id: true, name: true } } },
         orderBy: { player: { name: "asc" } },
@@ -53,6 +54,7 @@ export default async function CompetitionPage({
         clubId={clubId}
         competitionName={competition.name}
         clubName={competition.club.name}
+        seasonName={competition.season?.name ?? null}
         players={players}
         initialMatches={matches}
         laggingGamesGap={competition.laggingGamesGap}

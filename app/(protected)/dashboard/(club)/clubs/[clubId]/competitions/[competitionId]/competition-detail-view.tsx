@@ -35,6 +35,7 @@ export default function CompetitionDetailView({
   clubId,
   competitionName,
   clubName,
+  seasonName,
   players,
   initialMatches,
   laggingGamesGap,
@@ -44,6 +45,7 @@ export default function CompetitionDetailView({
   clubId: string
   competitionName: string
   clubName: string
+  seasonName?: string | null
   players: Player[]
   initialMatches: MatchRecord[]
   laggingGamesGap: number
@@ -57,6 +59,7 @@ export default function CompetitionDetailView({
       <CompetitionHeaderBar
         competitionName={competitionName}
         clubName={clubName}
+        seasonName={seasonName}
         showCaramboles={showCaramboles}
         onToggleCaramboles={() => setShowCaramboles((s) => !s)}
       >
